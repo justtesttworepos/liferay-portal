@@ -4,7 +4,7 @@ AUI.add(
 		var DefinitionSerializer = Liferay.DDL.DefinitionSerializer;
 		var LayoutSerializer = Liferay.DDL.LayoutSerializer;
 
-		var AUTOSAVE_INTERVAL = 60000;
+		var AUTOSAVE_INTERVAL = 10000;
 
 		var TPL_BUTTON_SPINNER = '<span aria-hidden="true"><span class="icon-spinner icon-spin"></span></span>';
 
