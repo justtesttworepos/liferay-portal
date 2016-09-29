@@ -24,6 +24,7 @@ import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.TransactionConfig;
 import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import java.io.IOException;
 
@@ -89,6 +90,9 @@ public class SaveRecordSetMVCResourceCommand extends BaseMVCResourceCommand {
 
 			@Override
 			public DDLRecordSet call() throws Exception {
+				resourceRequest.setAttribute(
+					"status", WorkflowConstants.STATUS_DRAFT);
+
 				return addUpdateRecordSetMVCCommandHelper.saveRecordSet(
 					resourceRequest, resourceResponse);
 			}

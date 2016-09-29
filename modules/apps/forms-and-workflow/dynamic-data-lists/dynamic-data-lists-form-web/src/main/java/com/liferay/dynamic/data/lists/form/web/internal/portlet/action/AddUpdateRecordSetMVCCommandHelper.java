@@ -137,7 +137,7 @@ public class AddUpdateRecordSetMVCCommandHelper {
 		DDMForm ddmForm = getDDMForm(portletRequest);
 		DDMFormLayout ddmFormLayout = getDDMFormLayout(portletRequest);
 
-		ServiceContext serviceContext = ServiceContextFactory.getInstance(
+		ServiceContext serviceContext = getServiceContext(
 			DDMStructure.class.getName(), portletRequest);
 
 		return ddmStructureService.addStructure(
@@ -162,7 +162,7 @@ public class AddUpdateRecordSetMVCCommandHelper {
 		String name = ParamUtil.getString(portletRequest, "name");
 		String description = ParamUtil.getString(portletRequest, "description");
 
-		ServiceContext serviceContext = ServiceContextFactory.getInstance(
+		ServiceContext serviceContext = getServiceContext(
 			DDLRecordSet.class.getName(), portletRequest);
 
 		return ddlRecordSetService.addRecordSet(
@@ -297,7 +297,7 @@ public class AddUpdateRecordSetMVCCommandHelper {
 		DDMForm ddmForm = getDDMForm(portletRequest);
 		DDMFormLayout ddmFormLayout = getDDMFormLayout(portletRequest);
 
-		ServiceContext serviceContext = ServiceContextFactory.getInstance(
+		ServiceContext serviceContext = getServiceContext(
 			DDMStructure.class.getName(), portletRequest);
 
 		return ddmStructureService.updateStructure(
@@ -319,7 +319,7 @@ public class AddUpdateRecordSetMVCCommandHelper {
 		String name = ParamUtil.getString(portletRequest, "name");
 		String description = ParamUtil.getString(portletRequest, "description");
 
-		ServiceContext serviceContext = ServiceContextFactory.getInstance(
+		ServiceContext serviceContext = getServiceContext(
 			DDLRecordSet.class.getName(), portletRequest);
 
 		return ddlRecordSetService.updateRecordSet(
@@ -327,6 +327,20 @@ public class AddUpdateRecordSetMVCCommandHelper {
 			getLocalizedMap(themeDisplay.getSiteDefaultLocale(), name),
 			getLocalizedMap(themeDisplay.getSiteDefaultLocale(), description),
 			DDLRecordSetConstants.MIN_DISPLAY_ROWS_DEFAULT, serviceContext);
+	}
+
+	protected ServiceContext getServiceContext(
+			String className, PortletRequest portletRequest)
+		throws PortalException {
+
+		ServiceContext serviceContext = ServiceContextFactory.getInstance(
+			className, portletRequest);
+
+		Integer status = (Integer)portletRequest.getAttribute("status");
+
+		serviceContext.setAttribute("status", status);
+
+		return serviceContext;
 	}
 
 	protected void updateRecordSetSettings(
