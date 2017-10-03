@@ -19,8 +19,8 @@
 <%
 String cmd = ParamUtil.getString(request, Constants.CMD);
 
-String tabs1 = "roles";
-String tabs2 = ParamUtil.getString(request, "tabs2", "current");
+String tabs2 = "roles";
+String tabs3 = ParamUtil.getString(request, "tabs3", "current");
 
 String redirect = ParamUtil.getString(request, "redirect");
 
@@ -36,8 +36,9 @@ PortletURL portletURL = renderResponse.createRenderURL();
 
 portletURL.setParameter("mvcPath", "/edit_role_permissions.jsp");
 portletURL.setParameter(Constants.CMD, Constants.VIEW);
-portletURL.setParameter("tabs1", tabs1);
+portletURL.setParameter("tabs1", "define-permissions");
 portletURL.setParameter("tabs2", tabs2);
+portletURL.setParameter("tabs3", tabs3);
 portletURL.setParameter("backURL", backURL);
 portletURL.setParameter("roleId", String.valueOf(role.getRoleId()));
 
@@ -53,25 +54,10 @@ if (!portletName.equals(PortletKeys.SERVER_ADMIN)) {
 }
 %>
 
-<liferay-portlet:resourceURL copyCurrentRenderParameters="<%= false %>" varImpl="editPermissionsResourceURL">
-	<portlet:param name="mvcPath" value="/view_resources.jsp" />
-	<portlet:param name="<%= Constants.CMD %>" value="<%= Constants.EDIT %>" />
-	<portlet:param name="tabs1" value="roles" />
-	<portlet:param name="redirect" value="<%= backURL %>" />
-	<portlet:param name="roleId" value="<%= String.valueOf(role.getRoleId()) %>" />
-</liferay-portlet:resourceURL>
-
-<liferay-portlet:renderURL copyCurrentRenderParameters="<%= false %>" varImpl="editPermissionsURL">
-	<portlet:param name="mvcPath" value="/view_resources.jsp" />
-	<portlet:param name="<%= Constants.CMD %>" value="<%= Constants.EDIT %>" />
-	<portlet:param name="tabs1" value="roles" />
-	<portlet:param name="redirect" value="<%= backURL %>" />
-	<portlet:param name="backURL" value="<%= backURL %>" />
-	<portlet:param name="roleId" value="<%= String.valueOf(role.getRoleId()) %>" />
-</liferay-portlet:renderURL>
-
 <liferay-ui:success key="permissionDeleted" message="the-permission-was-deleted" />
 <liferay-ui:success key="permissionsUpdated" message="the-role-permissions-were-updated" />
+
+<liferay-util:include page="/edit_role_tabs.jsp" servletContext="<%= application %>" />
 
 <aui:container cssClass="container-fluid-1280" id="permissionContainer">
 	<aui:row>
@@ -137,7 +123,7 @@ if (!portletName.equals(PortletKeys.SERVER_ADMIN)) {
 	}
 </aui:script>
 
-<aui:script use="aui-io-request,aui-loading-mask-deprecated,aui-parse-content,aui-toggler,autocomplete-base,autocomplete-filters,liferay-notice">
+<aui:script use="aui-io-request,aui-loading-mask-deprecated,aui-parse-content,aui-toggler,autocomplete-base,autocomplete-filters,liferay-notification">
 	var AParseContent = A.Plugin.ParseContent;
 
 	var notification;
@@ -267,24 +253,6 @@ if (!portletName.equals(PortletKeys.SERVER_ADMIN)) {
 		);
 	}
 
-	function getNotification() {
-		if (!notification) {
-			notification = new Liferay.Notice(
-				{
-					closeText: false,
-					content: '<liferay-ui:message key="sorry,-we-were-not-able-to-access-the-server" /><button class="close" type="button">&times;</button>',
-					noticeClass: 'hide',
-					timeout: 10000,
-					toggleText: false,
-					type: 'warning',
-					useAnimation: true
-				}
-			);
-		}
-
-		return notification;
-	}
-
 	var originalSelectedValues = [];
 
 	function processNavigationLinks() {
@@ -297,47 +265,60 @@ if (!portletName.equals(PortletKeys.SERVER_ADMIN)) {
 			function(event) {
 				event.preventDefault();
 
-				permissionContentContainerNode.plug(A.LoadingMask);
-
-				permissionContentContainerNode.loadingmask.show();
-
-				permissionContentContainerNode.unplug(AParseContent);
-
 				var href = event.currentTarget.attr('data-resource-href');
 
 				href = Liferay.Util.addParams('p_p_isolated=true', href);
 
-				A.io.request(
+				AUI.$.ajax(
 					href,
 					{
-						on: {
-							failure: function() {
-								permissionContentContainerNode.loadingmask.hide();
+						beforeSend: function() {
+							permissionContentContainerNode.plug(A.LoadingMask);
 
-								getNotification().show();
-							},
-							success: function(event, id, obj) {
-								if (notification) {
-									notification.hide();
-								}
+							permissionContentContainerNode.loadingmask.show();
 
-								permissionContentContainerNode.unplug(A.LoadingMask);
+							permissionContentContainerNode.unplug(AParseContent);
+						},
+						complete: function() {
+							permissionContentContainerNode.loadingmask.hide();
 
-								permissionContentContainerNode.plug(AParseContent);
+							permissionContentContainerNode.unplug(A.LoadingMask);
+						},
+						error: function(obj) {
+							if (obj.status === 401) {
+								window.location.reload();
 
-								var responseData = this.get('responseData');
-
-								permissionContentContainerNode.empty();
-
-								permissionContentContainerNode.setContent(responseData);
-
-								var checkedNodes = permissionContentContainerNode.all(':checked');
-
-								originalSelectedValues = checkedNodes.val();
+								return;
 							}
+
+							new Liferay.Notification(
+								{
+									closeable: true,
+									delay: {
+										hide: 0,
+										show: 0
+									},
+									duration: 500,
+									message: '<liferay-ui:message key="sorry,-we-were-not-able-to-access-the-server" />',
+									render: true,
+									title: '<liferay-ui:message key="warning" />',
+									type: 'warning'
+								}
+							);
+						},
+						success: function(responseData) {
+							permissionContentContainerNode.plug(AParseContent);
+
+							permissionContentContainerNode.empty();
+
+							permissionContentContainerNode.setContent(responseData);
+
+							var checkedNodes = permissionContentContainerNode.all(':checked');
+
+							originalSelectedValues = checkedNodes.val();
 						}
 					}
-				);
+				)
 			},
 			'.permission-navigation-link'
 		);
@@ -398,9 +379,9 @@ if (!portletName.equals(PortletKeys.SERVER_ADMIN)) {
 				selectedGroupNames = selectedGroupNamesField.split('@@');
 			}
 
-			if (selectedGroupIds.indexOf(event.groupid) == -1) {
-				selectedGroupIds.push(event.groupid);
-				selectedGroupNames.push(event.groupdescriptivename);
+			if (selectedGroupIds.indexOf(event.entityid) == -1) {
+				selectedGroupIds.push(event.entityid);
+				selectedGroupNames.push(event.entityname);
 			}
 
 			<portlet:namespace />updateGroups(selectedGroupIds, selectedGroupNames, event.grouptarget);

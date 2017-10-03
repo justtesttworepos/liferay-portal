@@ -1,4 +1,56 @@
 <definition>
+	<command name="add">
+		<execute function="Click" locator1="Button#PLUS" />
+
+		<execute function="AssertTextEquals" locator1="Portlet#HEADER" value1="New Role" />
+
+		<execute macro="PortletEntry#inputTitle">
+			<var name="title" value="${roleTitle}" />
+		</execute>
+
+		<if>
+			<isset var="roleDescription" />
+			<then>
+				<execute macro="PortletEntry#inputDescription">
+					<var name="description" value="${roleDescription}" />
+				</execute>
+			</then>
+		</if>
+
+		<if>
+			<isset var="roleKey" />
+			<then>
+				<execute function="Type" locator1="TextInput#KEY" value1="${roleKey}" />
+			</then>
+		</if>
+
+		<execute function="AssertClick" locator1="Button#SUBMIT" value1="Save" />
+
+		<execute macro="Alert#viewSuccessMessage" />
+	</command>
+
+	<command name="addAssignees">
+		<execute function="Click" locator1="Button#PLUS" />
+
+		<execute function="SelectFrame" locator1="IFrame#SELECT_ASSIGNEES" />
+
+		<execute macro="Search#searchCP">
+			<var name="searchTerm" value="${assigneeName}" />
+		</execute>
+
+		<var name="key_assigneeName" value="${assigneeName}" />
+
+		<execute function="AssertTextEquals" locator1="RolesAssignMembers#ADD_ASSIGNEE_TABLE_NAME" value1="${assigneeName}" />
+
+		<execute function="Check" locator1="RolesAssignMembers#ADD_ASSIGNEE_TABLE_CHECKBOX" />
+
+		<execute function="SelectFrameTop" value1="relative=top" />
+
+		<execute function="AssertClick" locator1="Button#ADD" value1="Add" />
+
+		<execute macro="Alert#viewSuccessMessage" />
+	</command>
+
 	<command name="addCP">
 		<if>
 			<equals arg1="${roleType}" arg2="Organization" />
@@ -22,32 +74,38 @@
 				<equals arg1="${roleType}" arg2="Site" />
 			</or>
 			<then>
+				<var name="key_navItem" value="${roleType}" />
 				<var name="key_roleType" value="${roleType}" />
 			</then>
 			<else>
+				<var name="key_navItem" value="Regular" />
 				<var name="key_roleType" value="Regular" />
 			</else>
 		</if>
 
-		<execute function="AssertVisible" locator1="Roles#BREADCRUMB" />
+		<execute function="AssertVisible" locator1="NavBar#ACTIVE_NAV_ITEM_LINK" />
 
 		<execute function="Click" locator1="Button#PLUS" />
 
 		<execute function="AssertTextEquals" locator1="Portlet#HEADER" value1="New Role" />
 
-		<execute function="Type" locator1="TextInput#NAME" value1="${roleName}" />
+		<execute macro="PortletEntry#inputTitle">
+			<var name="title" value="${roleTitle}" />
+		</execute>
 
 		<if>
 			<isset var="roleDescription" />
 			<then>
-				<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescription}" />
+				<execute macro="PortletEntry#inputDescription">
+					<var name="description" value="${roleDescription}" />
+				</execute>
 			</then>
 		</if>
 
 		<if>
-			<isset var="roleTitle" />
+			<isset var="roleKey" />
 			<then>
-				<execute function="Type" locator1="TextInput#TITLE" value1="${roleTitle}" />
+				<execute function="Type" locator1="TextInput#KEY" value1="${roleKey}" />
 			</then>
 		</if>
 
@@ -56,37 +114,56 @@
 		<execute macro="Alert#viewSuccessMessage" />
 	</command>
 
-	<command name="addStagingAdminRole">
-		<var name="roleName" value="Staging Admin" />
+	<command name="addPermissions">
+		<for list="${permissionDefinitionKeys}" param="permissionDefinitionKey">
+			<execute function="Check" locator1="RolesPermissions#${permissionDefinitionKey}" />
+		</for>
 
-		<execute macro="Role#addCP">
-			<var name="roleDescription" value="${roleDescription}" />
-			<var name="roleName" value="${roleName}" />
-			<var name="roleTitle" value="${roleTitle}" />
+		<execute function="ScrollWebElementIntoView" locator1="RolesPermissions#SAVE_BUTTON" />
+
+		<execute function="AssertClick" locator1="RolesPermissions#SAVE_BUTTON" value1="Save" />
+
+		<execute macro="Alert#viewSuccessMessage" />
+	</command>
+
+	<command name="addStagingAdminRole">
+		<var name="roleTitle" value="Staging Admin" />
+
+		<execute macro="RoleNavigator#gotoRoleType">
 			<var name="roleType" value="Site" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="Role#add">
+			<var name="roleDescription" value="${roleDescription}" />
+			<var name="roleKey" value="${roleKey}" />
+			<var name="roleTitle" value="${roleTitle}" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
 		<execute macro="Role#definePermissionsCP">
 			<var name="permissionDefinitionKeys" value="SITE_ADMIN_PAGES_SITE_PAGES_GENERAL_PERMISSIONS_ACTION_CHECKBOX,SITE_ADMIN_PAGES_SITE_PAGES_RESOURCE_PERMISSIONS_SITE_ACTION_CHECKBOX,SITE_ADMIN_PAGES_SITE_PAGES_RESOURCE_PERMISSIONS_PAGE_ACTION_CHECKBOX,SITE_ADMIN_PAGES_SITE_PAGES_RESOURCE_PERMISSIONS_PAGE_VARIATION_ACTION_CHECKBOX,SITE_ADMIN_PAGES_SITE_PAGES_RESOURCE_PERMISSIONS_SITE_PAGES_VARIATION_ACTION_CHECKBOX" />
-			<var name="roleName" value="${roleName}" />
+			<var name="roleTitle" value="${roleTitle}" />
 			<var name="roleType" value="Site" />
 		</execute>
 	</command>
 
 	<command name="assignMembersOrganizationsCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#ASSIGN_MEMBERS" value1="Assign Members" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Assign Members">
+			<var name="key_menuItem" value="Assign Members" />
+		</execute>
 
 		<execute function="AssertClick" locator1="NavTab#ORGANIZATIONS" value1="Organizations" />
 
@@ -110,15 +187,17 @@
 	</command>
 
 	<command name="assignMembersSitesCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#ASSIGN_MEMBERS" value1="Assign Members" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Assign Members">
+			<var name="key_menuItem" value="Assign Members" />
+		</execute>
 
 		<execute function="AssertClick" locator1="NavTab#SITES" value1="Sites" />
 
@@ -142,15 +221,17 @@
 	</command>
 
 	<command name="assignMembersUserGroupsCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="Click" locator1="Button#SUBMIT" />
 
-		<execute function="AssertClick" locator1="Roles#ROLE_TABLE_TITLE_LINK" value1="${roleName}" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="NavBar#USER_GROUPS" value1="User Groups" />
+		<execute function="AssertClick" locator1="ListGroupItem#ITEM_NAME_LINK" value1="${roleTitle}" />
+
+		<execute function="AssertClick" locator1="NavBar#ASSIGNEES" value1="Assignees" />
+
+		<execute function="AssertClick" locator1="NavTab#USER_GROUPS" value1="User Groups" />
 
 		<execute function="Click" locator1="Button#PLUS" />
 
@@ -174,13 +255,15 @@
 	</command>
 
 	<command name="assignRegRoleCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="Click" locator1="Button#SUBMIT" />
 
-		<execute function="AssertClick" locator1="Roles#ROLE_TABLE_TITLE_LINK" value1="${roleName}" />
+		<var name="key_itemName" value="${roleTitle}" />
+
+		<execute function="AssertClick" locator1="ListGroupItem#ITEM_NAME_LINK" value1="${roleTitle}" />
+
+		<execute function="AssertClick" locator1="NavBar#ASSIGNEES" value1="Assignees" />
 
 		<execute function="Click" locator1="Button#PLUS" />
 
@@ -215,7 +298,7 @@
 			<var name="permissionNavigationKey" value="${permissionNavigationKey}" />
 			<var name="permissionNavigationValue" value="${permissionNavigationValue}" />
 			<var name="remove" value="${remove}" />
-			<var name="roleName" value="${roleName}" />
+			<var name="roleTitle" value="${roleTitle}" />
 			<var name="roleType" value="${roleType}" />
 			<var name="roleUser" value="${roleUser}" />
 			<var name="siteNameScope" value="${siteNameScope}" />
@@ -225,7 +308,7 @@
 	<command name="definePermissionCP">
 		<execute macro="Role#definePermissionCmdCP">
 			<var name="permissionDefinitionKey" value="${permissionDefinitionKey}" />
-			<var name="roleName" value="${roleName}" />
+			<var name="roleTitle" value="${roleTitle}" />
 			<var name="roleType" value="${roleType}" />
 			<var name="roleUser" value="${roleUser}" />
 		</execute>
@@ -239,8 +322,8 @@
 	</command>
 
 	<command name="definePermissionPG">
-		<var method="StringUtil#replace('${roleName}', ' ', '-')" name="key_roleName" />
-		<var method="StringUtil#lowerCase('${key_roleName}')" name="key_roleName" />
+		<var method="StringUtil#replace('${roleTitle}', ' ', '-')" name="key_roleTitle" />
+		<var method="StringUtil#lowerCase('${key_roleTitle}')" name="key_roleTitle" />
 
 		<if>
 			<condition function="IsElementPresent#isElementPresentAfterWait" locator1="IFrame#DIALOG" />
@@ -270,7 +353,7 @@
 	<command name="definePermissionsCP">
 		<execute macro="Role#definePermissionCmdCP">
 			<var name="permissionDefinitionKeys" value="${permissionDefinitionKeys}" />
-			<var name="roleName" value="${roleName}" />
+			<var name="roleTitle" value="${roleTitle}" />
 			<var name="roleType" value="${roleType}" />
 			<var name="roleUser" value="${roleUser}" />
 		</execute>
@@ -281,27 +364,31 @@
 
 		<execute function="Click" locator1="Button#SUBMIT" />
 
-		<var name="key_roleName" value="${roleName}" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
 
-		<execute function="AssertClickNoError" locator1="MenuItem#DELETE" value1="Delete" />
+		<execute function="AssertClickNoError" locator1="MenuItem#ANY_MENU_ITEM" value1="Delete">
+			<var name="key_menuItem" value="Delete" />
+		</execute>
 
 		<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
 	</command>
 
 	<command name="editCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="AssertTextEquals" locator1="Roles#ROLE_TABLE_TITLE" value1="${roleName}" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="Roles#ROLE_TABLE_ACTIONS" value1="Actions" />
+		<execute function="AssertTextEquals" locator1="ListGroupItem#ITEM_NAME" value1="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#EDIT" value1="Edit" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Edit">
+			<var name="key_menuItem" value="Edit" />
+		</execute>
 
 		<if>
 			<equals arg1="${localizeRoleName}" arg2="true" />
@@ -309,7 +396,9 @@
 				<execute macro="Role#localizeRoleNameCmd" />
 			</then>
 			<else>
-				<execute function="Type" locator1="TextInput#TITLE" value1="${roleName}" />
+				<execute macro="PortletEntry#inputTitle">
+					<var name="title" value="${roleTitle}" />
+				</execute>
 			</else>
 		</if>
 
@@ -322,7 +411,9 @@
 						<execute macro="Role#localizeRoleDescriptionCmd" />
 					</then>
 					<else>
-						<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescription}" />
+						<execute macro="PortletEntry#inputDescription">
+							<var name="description" value="${roleDescription}" />
+						</execute>
 					</else>
 				</if>
 			</then>
@@ -332,45 +423,45 @@
 	</command>
 
 	<command name="editPermissionCmdCP">
-		<var name="key_roleName" value="${roleName}" />
+		<var name="key_roleTitle" value="${roleTitle}" />
 
 		<if>
-			<equals arg1="${roleType}" arg2="Organization" />
+			<contains string="Organization,Site" substring="${roleType}" />
 			<then>
-				<execute function="AssertClick" locator1="MenuItem#ORGANIZATION_ROLES" value1="Organization Roles" />
+				<execute macro="Navigator#gotoNavItem">
+					<var name="navItem" value="${roleType} Roles" />
+				</execute>
 			</then>
-			<elseif>
-				<equals arg1="${roleType}" arg2="Site" />
-				<then>
-					<execute function="AssertClick" locator1="MenuItem#SITE_ROLES" value1="Site Roles" />
-				</then>
-			</elseif>
 			<else>
-				<execute function="AssertClick" locator1="MenuItem#REGULAR_ROLES" value1="Regular Roles" />
+				<execute macro="Navigator#gotoNavItem">
+					<var name="navItem" value="Regular Roles" />
+				</execute>
 			</else>
 		</if>
 
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="Click" locator1="Button#SUBMIT" />
 
 		<if>
 			<isset var="roleUser" />
 			<then>
-				<var name="key_roleUser" value="${roleUser}" />
+				<var name="key_itemName" value="${roleUser}" />
 
-				<execute function="AssertTextEquals" locator1="Roles#ROLE_TABLE_USER_TITLE" value1="${roleUser}" />
+				<execute function="AssertTextEquals" locator1="ListGroupItem#ITEM_NAME" value1="${roleUser}" />
 
-				<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+				<execute function="AssertClick" locator1="ListGroupItem#ITEM_NAME_LINK" value1="${roleUser}" />
 			</then>
 			<else>
-				<execute function="AssertTextEquals" locator1="Roles#ROLE_TABLE_TITLE" value1="${roleName}" />
+				<var name="key_itemName" value="${roleTitle}" />
 
-				<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+				<execute function="AssertTextEquals" locator1="ListGroupItem#ITEM_NAME" value1="${roleTitle}" />
+
+				<execute function="AssertClick" locator1="ListGroupItem#ITEM_NAME_LINK" value1="${roleTitle}" />
 			</else>
 		</if>
 
-		<execute function="AssertClick" locator1="MenuItem#DEFINE_PERMISSIONS" value1="Define Permissions" />
+		<execute function="AssertClick" locator1="NavBar#DEFINE_PERMISSIONS" value1="Define Permissions" />
 
 		<if>
 			<and>
@@ -490,6 +581,13 @@
 					</then>
 				</elseif>
 				<elseif>
+					<contains string="${permissionDefinitionKey}" substring="SITE_ADMIN_CONFIGURATION_SITE_SETTINGS" />
+					<then>
+						<var name="permissionNavigationKey" value="SITE_ADMIN_CONFIGURATION_SITE_SETTINGS" />
+						<var name="permissionNavigationValue" value="Site Settings" />
+					</then>
+				</elseif>
+				<elseif>
 					<contains string="${permissionDefinitionKey}" substring="SITE_ADMIN_CONTENT_BLOGS" />
 					<then>
 						<var name="permissionNavigationKey" value="SITE_ADMIN_CONTENT_BLOGS" />
@@ -522,6 +620,13 @@
 					<then>
 						<var name="permissionNavigationKey" value="SITE_ADMIN_CONTENT_DYNAMIC_DATA_LISTS" />
 						<var name="permissionNavigationValue" value="Dynamic Data Lists" />
+					</then>
+				</elseif>
+				<elseif>
+					<contains string="${permissionDefinitionKey}" substring="SITE_ADMIN_CONTENT_FORMS" />
+					<then>
+						<var name="permissionNavigationKey" value="SITE_ADMIN_CONTENT_FORMS" />
+						<var name="permissionNavigationValue" value="Forms" />
 					</then>
 				</elseif>
 				<elseif>
@@ -588,6 +693,7 @@
 				</not>
 				<then>
 					<execute function="Type" locator1="RolesPermissionsNavigation#SEARCH_FIELD" value1="${permissionNavigationValue}" />
+
 					<execute function="AssertClick" locator1="RolesPermissionsNavigation#${permissionNavigationKey}" value1="${permissionNavigationValue}" />
 
 					<execute function="AssertTextEquals" locator1="RolesPermissions#PERMISSION_HEADER" value1="${permissionNavigationValue}" />
@@ -631,6 +737,7 @@
 		</for>
 
 		<execute function="ScrollWebElementIntoView" locator1="RolesPermissions#SAVE_BUTTON" />
+
 		<execute function="AssertClick" locator1="RolesPermissions#SAVE_BUTTON" value1="Save" />
 
 		<execute macro="Alert#viewSuccessMessage" />
@@ -639,21 +746,27 @@
 	<command name="localizeRoleDescriptionCmd">
 		<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_ENGLISH" />
 
-		<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleName}" />
+		<execute macro="PortletEntry#inputDescription">
+			<var name="description" value="${roleTitle}" />
+		</execute>
 
 		<if>
 			<equals arg1="${language}" arg2="Catalan (Spain)" />
 			<then>
 				<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_CATALAN" />
 
-				<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+				<execute macro="PortletEntry#inputDescription">
+					<var name="description" value="${roleDescriptionLocalized}" />
+				</execute>
 			</then>
 			<elseif>
 				<equals arg1="${language}" arg2="Chinese (China)" />
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_CHINESE" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -661,7 +774,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_FINNISH" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -669,7 +784,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_FRENCH" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -677,7 +794,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_GERMAN" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -685,7 +804,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_HEBREW" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -693,7 +814,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_HUNGARIAN" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -701,7 +824,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_JAPANESE" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -709,7 +834,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_PORTUGUESE" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -717,7 +844,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#DESCRIPTION_FIELD_LOCALIZATION_FLAG_SPANISH" />
 
-					<execute function="Type" locator1="TextArea#DESCRIPTION" value1="${roleDescriptionLocalized}" />
+					<execute macro="PortletEntry#inputDescription">
+						<var name="description" value="${roleDescriptionLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 		</if>
@@ -726,21 +855,27 @@
 	<command name="localizeRoleNameCmd">
 		<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_ENGLISH" />
 
-		<execute function="Type" locator1="TextInput#TITLE" value1="${roleName}" />
+		<execute macro="PortletEntry#inputTitle">
+			<var name="title" value="${roleTitle}" />
+		</execute>
 
 		<if>
 			<equals arg1="${language}" arg2="Catalan (Spain)" />
 			<then>
 				<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_CATALAN" />
 
-				<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+				<execute macro="PortletEntry#inputTitle">
+					<var name="title" value="${roleTitleLocalized}" />
+				</execute>
 			</then>
 			<elseif>
 				<equals arg1="${language}" arg2="Chinese (China)" />
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_CHINESE" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -748,7 +883,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_FINNISH" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -756,7 +893,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_FRENCH" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -764,7 +903,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_GERMAN" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -772,7 +913,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_HEBREW" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -780,7 +923,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_HUNGARIAN" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -788,7 +933,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_JAPANESE" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -796,7 +943,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_PORTUGUESE" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 			<elseif>
@@ -804,7 +953,9 @@
 				<then>
 					<execute function="Click" locator1="RolesEditRole#TITLE_FIELD_LOCALIZATION_FLAG_SPANISH" />
 
-					<execute function="Type" locator1="TextInput#TITLE" value1="${roleNameLocalized}" />
+					<execute macro="PortletEntry#inputTitle">
+						<var name="title" value="${roleTitleLocalized}" />
+					</execute>
 				</then>
 			</elseif>
 		</if>
@@ -819,7 +970,7 @@
 			<var name="permissionNavigationKey" value="${permissionNavigationKey}" />
 			<var name="permissionNavigationValue" value="${permissionNavigationValue}" />
 			<var name="remove" value="true" />
-			<var name="roleName" value="${roleName}" />
+			<var name="roleTitle" value="${roleTitle}" />
 			<var name="roleType" value="${roleType}" />
 			<var name="roleUser" value="${roleUser}" />
 			<var name="siteNameScope" value="${siteNameScope}" />
@@ -834,8 +985,8 @@
 	</command>
 
 	<command name="removePermissionPG">
-		<var method="StringUtil#replace('${roleName}', ' ', '-')" name="key_roleName" />
-		<var method="StringUtil#lowerCase('${key_roleName}')" name="key_roleName" />
+		<var method="StringUtil#replace('${roleTitle}', ' ', '-')" name="key_roleTitle" />
+		<var method="StringUtil#lowerCase('${key_roleTitle}')" name="key_roleTitle" />
 
 		<if>
 			<condition function="IsElementPresent#isElementPresentAfterWait" locator1="IFrame#DIALOG" />
@@ -860,14 +1011,16 @@
 			<var name="permissionNavigationKey" value="${permissionNavigationKey}" />
 			<var name="permissionNavigationValue" value="${permissionNavigationValue}" />
 			<var name="remove" value="true" />
-			<var name="roleName" value="${roleName}" />
+			<var name="roleTitle" value="${roleTitle}" />
 			<var name="roleUser" value="${roleUser}" />
 			<var name="siteNameScope" value="${siteNameScope}" />
 		</execute>
 	</command>
 
 	<command name="tearDownCP">
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
@@ -876,11 +1029,13 @@
 		<execute function="Click" locator1="Roles#ROLE_SEARCH_BUTTON" />
 
 		<while>
-			<condition function="IsElementPresent#pauseIsElementPresent" locator1="Roles#ROLE_TABLE_ACTIONS_DEFAULT" />
+			<condition function="IsElementPresent#pauseIsElementPresent" locator1="ListGroupItem#ITEM_ACTIONS_DEFAULT" />
 			<then>
-				<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS_DEFAULT" />
+				<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS_DEFAULT" />
 
-				<execute function="AssertClickNoError" locator1="MenuItem#DELETE" value1="Delete" />
+				<execute function="AssertClickNoError" locator1="MenuItem#ANY_MENU_ITEM" value1="Delete">
+					<var name="key_menuItem" value="Delete" />
+				</execute>
 
 				<execute function="Confirm" value1="Are you sure you want to delete this? It will be deleted immediately." />
 			</then>
@@ -888,15 +1043,17 @@
 	</command>
 
 	<command name="unassignMembersOrganizationsCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#ASSIGN_MEMBERS" value1="Assign Members" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Assign Members">
+			<var name="key_menuItem" value="Assign Members" />
+		</execute>
 
 		<execute function="AssertClick" locator1="NavTab#ORGANIZATIONS" value1="Organizations" />
 
@@ -918,15 +1075,17 @@
 	</command>
 
 	<command name="unassignMembersSitesCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#ASSIGN_MEMBERS" value1="Assign Members" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Assign Members">
+			<var name="key_menuItem" value="Assign Members" />
+		</execute>
 
 		<execute function="AssertClick" locator1="NavTab#SITES" value1="Sites" />
 
@@ -950,15 +1109,17 @@
 	</command>
 
 	<command name="unassignMembersUserGroupsCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#ASSIGN_MEMBERS" value1="Assign Members" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Assign Members">
+			<var name="key_menuItem" value="Assign Members" />
+		</execute>
 
 		<execute function="AssertClick" locator1="NavTab#USER_GROUPS" value1="User Groups" />
 
@@ -980,15 +1141,17 @@
 	</command>
 
 	<command name="unassignRegRoleCP">
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleName}" />
+		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="${roleTitle}" />
 
 		<execute function="AssertClick" locator1="Button#SEARCH" value1="Search" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertClick" locator1="MenuItem#ASSIGN_MEMBERS" value1="Assign Members" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
+
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Assign Members">
+			<var name="key_menuItem" value="Assign Members" />
+		</execute>
 
 		<var name="key_userScreenName" value="${userScreenName}" />
 
@@ -1007,65 +1170,42 @@
 
 	<command name="viewCP">
 		<if>
-			<equals arg1="${roleType}" arg2="Organization" />
+			<contains string="Organization,Site" substring="${roleType}" />
 			<then>
-				<execute function="AssertClick" locator1="MenuItem#ORGANIZATION_ROLES" value1="Organization Roles" />
+				<execute macro="Navigator#gotoNavItem">
+					<var name="navItem" value="${roleType} Roles" />
+				</execute>
 			</then>
-			<elseif>
-				<equals arg1="${roleType}" arg2="Site" />
-				<then>
-					<execute function="AssertClick" locator1="MenuItem#SITE_ROLES" value1="Site Roles" />
-				</then>
-			</elseif>
 			<else>
-				<execute function="AssertClick" locator1="MenuItem#REGULAR_ROLES" value1="Regular Roles" />
+				<execute macro="Navigator#gotoNavItem">
+					<var name="navItem" value="Regular Roles" />
+				</execute>
 			</else>
 		</if>
 
-		<var name="key_roleName" value="${roleName}" />
+		<var name="key_itemName" value="${roleTitle}" />
 
-		<execute function="AssertTextEquals" locator1="Roles#ROLE_TABLE_TITLE" value1="${roleName}" />
+		<execute function="AssertTextEquals" locator1="ListGroupItem#ITEM_NAME" value1="${roleTitle}" />
 
-		<execute function="Click" locator1="Roles#ROLE_TABLE_ACTIONS" />
+		<execute function="Click" locator1="ListGroupItem#ITEM_ACTIONS" />
 
-		<execute function="AssertClick" locator1="MenuItem#EDIT" value1="Edit" />
-
-		<execute macro="SiteAdmin#viewPortletTitle">
-			<var name="portletTitle" value="${roleName}" />
+		<execute function="AssertClick" locator1="MenuItem#ANY_MENU_ITEM" value1="Edit">
+			<var name="key_menuItem" value="Edit" />
 		</execute>
 
-		<execute function="AssertTextEquals" locator1="TextInput#NAME" value1="${roleName}" />
+		<execute macro="SiteAdmin#viewPortletTitle">
+			<var name="portletTitle" value="${roleTitle}" />
+		</execute>
+
+		<execute function="AssertTextEquals" locator1="TextInput#TITLE" value1="${roleTitle}" />
 	</command>
 
 	<command name="viewDefaultCP">
 		<execute function="Type#sendKeys" locator1="NavBar#BASIC_SEARCH_FIELD" value1="Name" />
+
 		<execute function="Click" locator1="Button#SUBMIT" />
 
 		<execute function="AssertTextEquals" locator1="Message#EMPTY_INFO" value1="No roles were found." />
-	</command>
-
-	<command name="viewNoXSSCP">
-		<if>
-			<equals arg1="${roleType}" arg2="Organization" />
-			<then>
-				<execute function="AssertClick" locator1="MenuItem#ORGANIZATION_ROLES" value1="Organization Roles" />
-			</then>
-			<elseif>
-				<equals arg1="${roleType}" arg2="Site" />
-				<then>
-					<execute function="AssertClick" locator1="MenuItem#SITE_ROLES" value1="Site Roles" />
-				</then>
-			</elseif>
-			<else>
-				<execute function="AssertClick" locator1="MenuItem#REGULAR_ROLES" value1="Regular Roles" />
-			</else>
-		</if>
-
-		<var name="key_roleName" value="${roleName}" />
-
-		<execute function="AssertAlertNotPresent" />
-		<execute function="AssertTextEquals" locator1="Roles#ROLE_TABLE_TITLE" value1="${roleName}" />
-		<execute function="AssertTextEquals" locator1="Roles#ROLE_TABLE_DESCRIPTION" value1="${roleDescription}" />
 	</command>
 
 	<command name="viewPermissionCP">
@@ -1261,8 +1401,8 @@
 	</command>
 
 	<command name="viewPermissionPG">
-		<var method="StringUtil#replace('${roleName}', ' ', '-')" name="key_roleName" />
-		<var method="StringUtil#lowerCase('${key_roleName}')" name="key_roleName" />
+		<var method="StringUtil#replace('${roleTitle}', ' ', '-')" name="key_roleTitle" />
+		<var method="StringUtil#lowerCase('${key_roleTitle}')" name="key_roleTitle" />
 
 		<if>
 			<equals arg1="${permissionFlagged}" arg2="true" />

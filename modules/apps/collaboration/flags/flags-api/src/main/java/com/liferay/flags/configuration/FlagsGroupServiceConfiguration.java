@@ -22,11 +22,12 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
  * @author Peter Fellwock
  */
 @ExtendedObjectClassDefinition(
+	category = "collaboration",
 	scope = ExtendedObjectClassDefinition.Scope.COMPANY
 )
 @Meta.OCD(
 	id = "com.liferay.flags.configuration.FlagsConfiguration",
-	localization = "content/Language", name = "flags.service.configuration.name"
+	localization = "content/Language", name = "flags-service-configuration-name"
 )
 public interface FlagsGroupServiceConfiguration {
 

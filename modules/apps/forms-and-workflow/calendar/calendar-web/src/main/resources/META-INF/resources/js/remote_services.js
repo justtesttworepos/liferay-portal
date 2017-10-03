@@ -58,6 +58,7 @@ AUI.add(
 							'/calendar.calendarbooking/delete-calendar-booking-instance': {
 								allFollowing: allFollowing,
 								calendarBookingId: schedulerEvent.get('calendarBookingId'),
+								deleteRecurringCalendarBookings: true,
 								instanceIndex: schedulerEvent.get('instanceIndex')
 							}
 						},
@@ -105,7 +106,7 @@ AUI.add(
 					instance._invokeResourceURL(
 						{
 							callback: callback,
-							queryParameters: {
+							payload: {
 								calendarIds: calendarIds.join(),
 								endTime: endDate.getTime(),
 								ruleName: ruleName,
@@ -145,19 +146,20 @@ AUI.add(
 					);
 				},
 
-				getEvents: function(calendarIds, startDate, endDate, status, callback) {
+				getEvents: function(calendarIds, eventsPerPage, startDate, endDate, status, callback) {
 					var instance = this;
 
 					instance._invokeResourceURL(
 						{
 							callback: callback,
-							queryParameters: {
+							payload: {
 								calendarIds: calendarIds.join(','),
 								endTimeDay: endDate.getDate(),
 								endTimeHour: endDate.getHours(),
 								endTimeMinute: endDate.getMinutes(),
 								endTimeMonth: endDate.getMonth(),
 								endTimeYear: endDate.getFullYear(),
+								eventsPerPage: eventsPerPage,
 								startTimeDay: startDate.getDate(),
 								startTimeHour: startDate.getHours(),
 								startTimeMinute: startDate.getMinutes(),
@@ -184,7 +186,33 @@ AUI.add(
 					);
 				},
 
-				invokeTransition: function(schedulerEvent, status) {
+				hasExclusiveCalendarBooking: function(calendarId, startDate, endDate, callback) {
+					var instance = this;
+
+					instance._invokeResourceURL(
+						{
+							callback: function(result) {
+								callback(result.hasExclusiveCalendarBooking);
+							},
+							queryParameters: {
+								calendarId: calendarId,
+								endTimeDay: endDate.getDate(),
+								endTimeHour: endDate.getHours(),
+								endTimeMinute: endDate.getMinutes(),
+								endTimeMonth: endDate.getMonth(),
+								endTimeYear: endDate.getFullYear(),
+								startTimeDay: startDate.getDate(),
+								startTimeHour: startDate.getHours(),
+								startTimeMinute: startDate.getMinutes(),
+								startTimeMonth: startDate.getMonth(),
+								startTimeYear: startDate.getFullYear()
+							},
+							resourceId: 'hasExclusiveCalendarBooking'
+						}
+					);
+				},
+
+				invokeTransition: function(schedulerEvent, instanceIndex, status, updateInstance, allFollowing) {
 					var instance = this;
 
 					var scheduler = schedulerEvent.get('scheduler');
@@ -192,8 +220,11 @@ AUI.add(
 					instance._invokeService(
 						{
 							'/calendar.calendarbooking/invoke-transition': {
+								allFollowing: allFollowing,
 								calendarBookingId: schedulerEvent.get('calendarBookingId'),
+								instanceIndex: instanceIndex,
 								status: status,
+								updateInstance: updateInstance,
 								userId: instance.get('userId')
 							}
 						},

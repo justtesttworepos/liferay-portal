@@ -23,8 +23,7 @@ import com.liferay.petra.xml.XMLUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
-import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
-import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
+import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.search.OpenSearch;
 import com.liferay.portal.kernel.search.OpenSearchRegistryUtil;
 import com.liferay.portal.kernel.search.OpenSearchUtil;
@@ -34,14 +33,15 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PredicateFilter;
+import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
-import com.liferay.portlet.asset.util.AssetUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,7 +94,9 @@ public class SearchUtil {
 								entryGroup.getParentGroupId());
 						}
 
-						if (!entryGroup.isActive()) {
+						if (!GroupLocalServiceUtil.isLiveGroupActive(
+								entryGroup)) {
+
 							totalRows--;
 
 							continue;
@@ -154,10 +156,9 @@ public class SearchUtil {
 	}
 
 	public static String getSearchResultViewURL(
-			RenderRequest renderRequest, RenderResponse renderResponse,
-			String className, long classPK, boolean viewInContext,
-			String currentURL)
-		throws Exception {
+		RenderRequest renderRequest, RenderResponse renderResponse,
+		String className, long classPK, boolean viewInContext,
+		String currentURL) {
 
 		try {
 			PortletURL viewContentURL = renderResponse.createRenderURL();
@@ -186,38 +187,48 @@ public class SearchUtil {
 				"assetEntryId", String.valueOf(assetEntry.getEntryId()));
 			viewContentURL.setParameter("type", assetRendererFactory.getType());
 
-			if (viewInContext) {
-				String viewFullContentURLString = viewContentURL.toString();
-
-				viewFullContentURLString = HttpUtil.setParameter(
-					viewFullContentURLString, "redirect", currentURL);
-
-				AssetRenderer<?> assetRenderer =
-					assetRendererFactory.getAssetRenderer(classPK);
-
-				String viewURL = assetRenderer.getURLViewInContext(
-					(LiferayPortletRequest)renderRequest,
-					(LiferayPortletResponse)renderResponse,
-					viewFullContentURLString);
-
-				ThemeDisplay themeDisplay =
-					(ThemeDisplay)renderRequest.getAttribute(
-						WebKeys.THEME_DISPLAY);
-
-				return AssetUtil.checkViewURL(
-					assetEntry, viewInContext, viewURL, currentURL,
-					themeDisplay);
+			if (!viewInContext) {
+				return viewContentURL.toString();
 			}
 
-			return viewContentURL.toString();
+			AssetRenderer<?> assetRenderer =
+				assetRendererFactory.getAssetRenderer(classPK);
+
+			String viewURL = assetRenderer.getURLViewInContext(
+				PortalUtil.getLiferayPortletRequest(renderRequest),
+				PortalUtil.getLiferayPortletResponse(renderResponse),
+				viewContentURL.toString());
+
+			if (Validator.isNull(viewURL)) {
+				return viewURL;
+			}
+
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)renderRequest.getAttribute(WebKeys.THEME_DISPLAY);
+
+			viewURL = HttpUtil.setParameter(
+				viewURL, "inheritRedirect", viewInContext);
+
+			Layout layout = themeDisplay.getLayout();
+
+			String assetEntryLayoutUuid = assetEntry.getLayoutUuid();
+
+			if (Validator.isNotNull(assetEntryLayoutUuid) &&
+				!assetEntryLayoutUuid.equals(layout.getUuid())) {
+
+				viewURL = HttpUtil.setParameter(
+					viewURL, "redirect", currentURL);
+			}
+
+			return viewURL;
 		}
 		catch (Exception e) {
 			_log.error(
-				"Unable to get search result  view URL for class " + className +
+				"Unable to get search result view URL for class " + className +
 					" with primary key " + classPK,
 				e);
 
-			return "";
+			return StringPool.BLANK;
 		}
 	}
 

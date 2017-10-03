@@ -17,11 +17,9 @@
 <%@ include file="/init.jsp" %>
 
 <%
-SearchContainer searchContainer = (SearchContainer)request.getAttribute(WebKeys.SEARCH_CONTAINER);
-
 String toolbarItem = ParamUtil.getString(request, "toolbarItem");
 
-long groupId = ParamUtil.getLong(request, "groupId", scopeGroupId);
+long groupId = ParamUtil.getLong(request, "groupId", PortalUtil.getScopeGroupId(request, refererPortletName));
 long classNameId = ParamUtil.getLong(request, "classNameId");
 long classPK = ParamUtil.getLong(request, "classPK");
 long resourceClassNameId = ParamUtil.getLong(request, "resourceClassNameId");

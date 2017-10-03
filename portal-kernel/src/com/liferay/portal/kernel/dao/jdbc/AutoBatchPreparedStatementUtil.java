@@ -14,7 +14,6 @@
 
 package com.liferay.portal.kernel.dao.jdbc;
 
-import com.liferay.portal.kernel.concurrent.ConcurrentHashSet;
 import com.liferay.portal.kernel.concurrent.FutureListener;
 import com.liferay.portal.kernel.concurrent.NoticeableFuture;
 import com.liferay.portal.kernel.concurrent.ThreadPoolExecutor;
@@ -32,8 +31,10 @@ import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -218,9 +219,7 @@ public class AutoBatchPreparedStatementUtil {
 								preparedStatement.executeBatch();
 							}
 							finally {
-								synchronized (_connection) {
-									preparedStatement.close();
-								}
+								preparedStatement.close();
 							}
 
 							return null;
@@ -251,7 +250,8 @@ public class AutoBatchPreparedStatementUtil {
 
 		private final Connection _connection;
 		private int _count;
-		private final Set<Future<Void>> _futures = new ConcurrentHashSet<>();
+		private final Set<Future<Void>> _futures = Collections.newSetFromMap(
+			new ConcurrentHashMap<>());
 		private PreparedStatement _preparedStatement;
 		private final String _sql;
 		private final ThreadPoolExecutor _threadPoolExecutor =
@@ -329,9 +329,7 @@ public class AutoBatchPreparedStatementUtil {
 								preparedStatement.executeUpdate();
 							}
 							finally {
-								synchronized (_connection) {
-									preparedStatement.close();
-								}
+								preparedStatement.close();
 							}
 
 							return null;
@@ -361,7 +359,8 @@ public class AutoBatchPreparedStatementUtil {
 		}
 
 		private final Connection _connection;
-		private final Set<Future<Void>> _futures = new ConcurrentHashSet<>();
+		private final Set<Future<Void>> _futures = Collections.newSetFromMap(
+			new ConcurrentHashMap<>());
 		private PreparedStatement _preparedStatement;
 		private final String _sql;
 		private final ThreadPoolExecutor _threadPoolExecutor =

@@ -14,13 +14,13 @@
 
 package com.liferay.asset.publisher.web;
 
-import com.liferay.asset.publisher.web.constants.AssetPublisherPortletKeys;
+import com.liferay.asset.publisher.web.internal.util.AssetPublisherWebUtil;
 import com.liferay.asset.publisher.web.util.AssetPublisherUtil;
 import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutTypePortletConstants;
-import com.liferay.portal.kernel.model.PortletConstants;
 import com.liferay.portal.kernel.model.PortletPreferences;
+import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.portlet.PortletLayoutListener;
 import com.liferay.portal.kernel.portlet.PortletLayoutListenerException;
 import com.liferay.portal.kernel.service.LayoutLocalService;
@@ -28,21 +28,17 @@ import com.liferay.portal.kernel.service.SubscriptionLocalService;
 import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.UnicodeProperties;
-import com.liferay.portlet.asset.util.AssetUtil;
-
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 /**
- * @author Zsolt Berentey
+ * Provides the implementation of <code>PortletLayoutListener</code> (in
+ * <code>com.liferay.portal.kernel</code>) for the Asset Publisher portlet so
+ * email subscriptions can be removed when the Asset Publisher is removed from
+ * the page.
+ *
+ * @author     Zsolt Berentey
+ * @deprecated As of 2.0.0, with not direct replacement
  */
-@Component(
-	immediate = true,
-	property = {
-		"javax.portlet.name=" + AssetPublisherPortletKeys.ASSET_PUBLISHER
-	},
-	service = PortletLayoutListener.class
-)
+@Deprecated
 public class AssetPublisherPortletLayoutListener
 	implements PortletLayoutListener {
 
@@ -61,7 +57,7 @@ public class AssetPublisherPortletLayoutListener
 		try {
 			Layout layout = _layoutLocalService.getLayout(plid);
 
-			if (AssetUtil.isDefaultAssetPublisher(
+			if (AssetPublisherWebUtil.isDefaultAssetPublisher(
 					layout, portletId, StringPool.BLANK)) {
 
 				_journalArticleLocalService.deleteLayoutArticleReferences(
@@ -71,9 +67,9 @@ public class AssetPublisherPortletLayoutListener
 			long ownerId = PortletKeys.PREFS_OWNER_ID_DEFAULT;
 			int ownerType = PortletKeys.PREFS_OWNER_TYPE_LAYOUT;
 
-			if (PortletConstants.hasUserId(portletId)) {
+			if (PortletIdCodec.hasUserId(portletId)) {
 				ownerType = PortletKeys.PREFS_OWNER_TYPE_USER;
-				ownerId = PortletConstants.getUserId(portletId);
+				ownerId = PortletIdCodec.decodeUserId(portletId);
 			}
 
 			_subscriptionLocalService.deleteSubscriptions(
@@ -106,21 +102,18 @@ public class AssetPublisherPortletLayoutListener
 		}
 	}
 
-	@Reference(unbind = "-")
 	protected void setJournalArticleLocalService(
 		JournalArticleLocalService journalArticleLocalService) {
 
 		_journalArticleLocalService = journalArticleLocalService;
 	}
 
-	@Reference(unbind = "-")
 	protected void setLayoutLocalService(
 		LayoutLocalService layoutLocalService) {
 
 		_layoutLocalService = layoutLocalService;
 	}
 
-	@Reference(unbind = "-")
 	protected void setSubscriptionLocalService(
 		SubscriptionLocalService subscriptionLocalService) {
 

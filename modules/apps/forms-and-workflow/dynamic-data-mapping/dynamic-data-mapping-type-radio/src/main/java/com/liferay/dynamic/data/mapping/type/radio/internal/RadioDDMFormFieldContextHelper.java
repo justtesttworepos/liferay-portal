@@ -16,14 +16,6 @@ package com.liferay.dynamic.data.mapping.type.radio.internal;
 
 import com.liferay.dynamic.data.mapping.model.DDMFormFieldOptions;
 import com.liferay.dynamic.data.mapping.model.LocalizedValue;
-import com.liferay.portal.kernel.json.JSONArray;
-import com.liferay.portal.kernel.json.JSONException;
-import com.liferay.portal.kernel.json.JSONFactory;
-import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.kernel.util.Validator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,10 +29,8 @@ import java.util.Map;
 public class RadioDDMFormFieldContextHelper {
 
 	public RadioDDMFormFieldContextHelper(
-		JSONFactory jsonFactory, DDMFormFieldOptions ddmFormFieldOptions,
-		String value, LocalizedValue predefinedValue, Locale locale) {
+		DDMFormFieldOptions ddmFormFieldOptions, Locale locale) {
 
-		_jsonFactory = jsonFactory;
 		_ddmFormFieldOptions = ddmFormFieldOptions;
 		_locale = locale;
 	}
@@ -64,44 +54,7 @@ public class RadioDDMFormFieldContextHelper {
 		return options;
 	}
 
-	protected String toString(String value) {
-		if (Validator.isNull(value)) {
-			return StringPool.BLANK;
-		}
-
-		try {
-			JSONArray jsonArray = _jsonFactory.createJSONArray(value);
-
-			return jsonArray.getString(0);
-		}
-		catch (JSONException jsone) {
-			String[] values = StringUtil.split(value);
-
-			if (values.length > 0) {
-				return values[0];
-			}
-
-			return StringPool.BLANK;
-		}
-	}
-
-	protected String[] toStringArray(String value) {
-		if (Validator.isNull(value)) {
-			return GetterUtil.DEFAULT_STRING_VALUES;
-		}
-
-		try {
-			JSONArray jsonArray = _jsonFactory.createJSONArray(value);
-
-			return ArrayUtil.toStringArray(jsonArray);
-		}
-		catch (JSONException jsone) {
-			return StringUtil.split(value);
-		}
-	}
-
 	private final DDMFormFieldOptions _ddmFormFieldOptions;
-	private final JSONFactory _jsonFactory;
 	private final Locale _locale;
 
 }

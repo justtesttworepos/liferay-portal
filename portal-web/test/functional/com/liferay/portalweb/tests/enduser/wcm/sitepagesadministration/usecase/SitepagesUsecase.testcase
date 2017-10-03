@@ -1,5 +1,6 @@
 <definition component-name="portal-wcm">
 	<property name="portal.release" value="true" />
+	<property name="portal.upstream" value="true" />
 	<property name="testray.main.component.name" value="Site Pages Administration" />
 
 	<set-up>
@@ -40,6 +41,8 @@
 	</tear-down>
 
 	<command name="AddSitePageXSS" priority="3">
+		<property name="testray.component.names" value="Site Pages Administration,XSS" />
+
 		<var name="sitePage3Name"><![CDATA[<script>alert("Site Page 3")</script> />]]></var>
 
 		<execute macro="Page#add">
@@ -81,6 +84,8 @@
 	</command>
 
 	<command name="CannotDeleteLastPublicPageOnLiferay" priority="3">
+		<property name="testray.component.names" value="Site Pages Administration" />
+
 		<execute macro="SitePageNavigator#gotoPages">
 			<var name="page" value="Public Pages" />
 		</execute>
@@ -91,7 +96,11 @@
 	</command>
 
 	<command name="ChangingPageTypeLayoutToLinkToAPageOfThisSiteHidesChildPages" priority="3">
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<property name="testray.component.names" value="Site Pages Administration" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -99,7 +108,9 @@
 			<var name="siteName" value="Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -108,7 +119,9 @@
 			<var name="siteName" value="Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -117,7 +130,9 @@
 			<var name="siteName" value="Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -134,9 +149,8 @@
 		</execute>
 
 		<execute macro="Page#editSelectPageType">
-			<var name="indexNumber" value="4" />
 			<var name="page" value="Site Page2 Name" />
-			<var name="pageName" value="- - Child Page Name" />
+			<var name="pageLinkName" value="Site Page1 Name" />
 			<var name="pageType" value="Link to a Page of This Site" />
 		</execute>
 
@@ -155,6 +169,8 @@
 	</command>
 
 	<command name="DefaultLanguageWithEmptyFriendlyURLThrowsErrorExceptions" priority="3">
+		<property name="testray.component.names" value="Site Pages Administration" />
+
 		<execute macro="Page#add">
 			<var name="pageName" value="Page Name" />
 		</execute>
@@ -193,10 +209,9 @@
 
 	<command name="LoadMoreResultsLinkAreMissingAtAllLevelsInTreeView" priority="3">
 		<property name="custom.properties" value="layout.manage.pages.initial.children=3" />
-		<var name="childPageNameList" value="Child Page1 Name,Child Page2 Name,Child Page3 Name,Child Page4 Name, Child Page5 Name" />
-		<var name="pageNameList" value="Page1 Name,Page2 Name,Page3 Name,Page4 Name" />
+		<property name="testray.component.names" value="Site Pages Administration" />
 
-		<for list="${pageNameList}" param="pageName">
+		<for list="Page1 Name,Page2 Name,Page3 Name,Page4 Name" param="pageName">
 			<execute macro="Page#add">
 				<var name="pageName" value="${pageName}" />
 			</execute>
@@ -210,7 +225,7 @@
 			<var name="siteChildPages" value="false" />
 		</execute>
 
-		<for list="${childPageNameList}" param="siteChildPageName">
+		<for list="Child Page1 Name,Child Page2 Name,Child Page3 Name,Child Page4 Name, Child Page5 Name" param="siteChildPageName">
 			<execute macro="Page#addChild">
 				<var name="page" value="Public Pages" />
 				<var name="pageName" value="Welcome" />
@@ -229,7 +244,13 @@
 	</command>
 
 	<command name="SitesPanelLayout" priority="3">
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<property name="testray.component.names" value="Site Pages Administration" />
+
+		<var method="TestPropsUtil#get('portal.url')" name="portalURL" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -240,7 +261,9 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -249,12 +272,14 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
 		<execute macro="Role#assignRegRoleCP">
-			<var name="roleName" value="Power User" />
+			<var name="roleTitle" value="Power User" />
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
@@ -273,7 +298,7 @@
 			<var name="pageName" value="Page Name" />
 		</execute>
 
-		<execute function="Open" locator1="http://localhost:8080/web/usersn/page-name?p_p_id=com_liferay_portal_settings_web_portlet_PortalSettingsPortlet&amp;p_p_state=maximized" />
+		<execute function="Open" locator1="${portalURL}/web/usersn/page-name?p_p_id=com_liferay_portal_settings_web_portlet_PortalSettingsPortlet&amp;p_p_state=maximized" />
 
 		<execute function="AssertTextEquals" locator1="Message#ERROR" value1="You do not have the roles required to access this portlet." />
 
@@ -283,8 +308,14 @@
 		</execute>
 	</command>
 
-	<command name="SitesPrivatePagesPermissions" priority="4">
-		<execute macro="ProductMenu#gotoControlPanelSites">
+	<command name="SitesPrivatePagesPermissions" priority="5">
+		<property name="portal.acceptance" value="pending" />
+		<property name="test.name.skip.portal.instance" value="SitepagesUsecase#SitesPrivatePagesPermissions" />
+		<property name="testray.component.names" value="Permissions,Roles,Site Pages Administration,Training" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -293,7 +324,9 @@
 			<var name="siteName" value="Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -303,15 +336,19 @@
 			<var name="sitePagePrivacy" value="Private" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
-		<execute macro="Role#addCP">
-			<var name="roleName" value="Roles Regrole Name" />
+		<execute macro="Role#add">
+			<var name="roleTitle" value="Roles Regrole Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -322,7 +359,9 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -331,7 +370,9 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -340,12 +381,14 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
 		<execute macro="User#assignRegularRoleCP">
-			<var name="roleName" value="Roles Regrole Name" />
+			<var name="roleTitle" value="Roles Regrole Name" />
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
@@ -363,12 +406,12 @@
 
 		<execute macro="Role#removePermissionPG">
 			<var name="permissionDefinitionKey" value="CONTENT_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Site Member" />
+			<var name="roleTitle" value="Site Member" />
 		</execute>
 
 		<execute macro="Role#definePermissionPG">
 			<var name="permissionDefinitionKey" value="CONTENT_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Roles Regrole Name" />
+			<var name="roleTitle" value="Roles Regrole Name" />
 		</execute>
 
 		<execute macro="User#firstLoginPG">
@@ -403,7 +446,7 @@
 
 		<execute macro="Role#removePermissionPG">
 			<var name="permissionDefinitionKey" value="CONTENT_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Roles Regrole Name" />
+			<var name="roleTitle" value="Roles Regrole Name" />
 		</execute>
 
 		<execute macro="User#firstLoginPG">
@@ -427,12 +470,17 @@
 	</command>
 
 	<command name="ViewSecureContentAndPageAsGuest" priority="3">
+		<property name="test.name.skip.portal.instance" value="SitepagesUsecase#ViewSecureContentAndPageAsGuest" />
+		<property name="testray.component.names" value="Message Boards,Site Pages Administration" />
+
 		<execute macro="TestCase#getSiteName">
 			<return from="siteName" name="siteName" />
 			<var name="siteName" value="${siteName}" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelConfiguration">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Configuration" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Server Administration" />
 		</execute>
 
@@ -441,7 +489,9 @@
 			<var method="TestPropsUtil#get('email.password.1')" name="userPassword" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelConfiguration">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Configuration" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Server Administration" />
 		</execute>
 
@@ -449,7 +499,9 @@
 			<var name="actionsDescription" value="Reindex all search indexes." />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -460,16 +512,20 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
 		<execute macro="Role#assignRegRoleCP">
-			<var name="roleName" value="Administrator" />
+			<var name="roleTitle" value="Administrator" />
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -478,18 +534,10 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
-			<var name="portlet" value="Sites" />
-		</execute>
-
 		<execute macro="Page#add">
 			<var name="pageName" value="Test Private Page" />
 			<var name="siteName" value="${siteName}" />
 			<var name="sitePagePrivacy" value="Private" />
-		</execute>
-
-		<execute macro="ProductMenu#gotoControlPanelSites">
-			<var name="portlet" value="Sites" />
 		</execute>
 
 		<execute macro="Page#add">
@@ -536,7 +584,7 @@
 
 		<execute macro="Blogs#addEntryWithPermissions">
 			<var name="entryContent" value="Blogs Entry Content" />
-			<var name="entryTitle" value="Blogs Entry Title" />
+			<var name="entryTitle" value="Blogs Entry Title GMB1" />
 			<var name="viewableBy" value="Site Members" />
 		</execute>
 
@@ -546,7 +594,7 @@
 
 		<execute macro="MessageboardsThread#addPGWithPermissions">
 			<var name="threadBody" value="MB Thread Message Body" />
-			<var name="threadSubject" value="MB Thread Message Subject" />
+			<var name="threadSubject" value="MB Thread Message Subject GMMB2" />
 			<var name="viewableBySelection" value="Site Members" />
 		</execute>
 
@@ -565,14 +613,13 @@
 
 		<execute macro="Gmail#viewMail">
 			<var name="emailFromUserName" value="Joe Bloggs" />
-			<var name="gmailAssetType" value="Blogs" />
-			<var name="gmailMessageBody" value="Blogs Entry Title" />
-			<var name="gmailMessageTitle" value="Test Test Published &quot;Blogs Entry Title&quot; on ${siteName} Blogs" />
+			<var name="gmailAssetType" value="GMB1" />
+			<var name="gmailMessageBody" value="Blogs Entry Title GMB1" />
+			<var name="gmailMessageTitle" value="Test Test Published &quot;Blogs Entry Title GMB1&quot; on ${siteName} Blogs" />
 		</execute>
 
 		<execute macro="Gmail#openMessageContinueReadingButton">
-			<var name="contentTitle" value="Blogs Entry Title" />
-			<var name="gmailAssetType" value="Blogs" />
+			<var name="contentTitle" value="Blogs Entry Title GMB1" />
 			<var name="pageName" value="Blog and Message Board Page" />
 			<var name="siteName" value="${siteName}" />
 		</execute>
@@ -591,13 +638,13 @@
 
 		<execute macro="Gmail#viewMail">
 			<var name="emailFromUserName" value="Test Test" />
-			<var name="gmailAssetType" value="Message Boards" />
+			<var name="gmailAssetType" value="GMMB2" />
 			<var name="gmailMessageBody" value="MB Thread Message Body" />
-			<var name="gmailMessageTitle" value="Message Boards Home - ${siteName} New Message: MB Thread Message Subject" />
+			<var name="gmailMessageTitle" value="Message Boards Home - ${siteName} New Message: MB Thread Message Subject GMMB2" />
 		</execute>
 
 		<execute macro="Gmail#openMessageLink">
-			<var name="contentTitle" value="MB Thread Message Subject" />
+			<var name="contentTitle" value="MB Thread Message Subject GMMB2" />
 			<var name="gmailAssetType" value="Message Boards" />
 			<var name="pageName" value="Blog and Message Board Page" />
 			<var name="siteName" value="${siteName}" />
@@ -613,9 +660,10 @@
 			<var name="pageName" value="Blog and Message Board Page" />
 		</execute>
 
-		<execute macro="Gmail#tearDown">
-			<var method="TestPropsUtil#get('email.address.2')" name="userEmailAddress" />
-			<var method="TestPropsUtil#get('email.password.2')" name="userPassword" />
+		<execute macro="Gmail#gotoHtmlMode" />
+
+		<execute macro="Gmail#deleteSpecificMail">
+			<var name="gmailMessageTitleList" value="Test Test Published &quot;Blogs Entry Title GMB1&quot; on ${siteName} Blogs,Message Boards Home - ${siteName} New Message: MB Thread Message Subject GMMB2,Your New Account,Your New Password,GMB1,GMMB2" />
 		</execute>
 
 		<execute macro="User#logoutPG" />
@@ -640,12 +688,17 @@
 	</command>
 
 	<command name="ViewSecureContentAndPageAsSiteMember" priority="3">
+		<property name="test.name.skip.portal.instance" value="SitepagesUsecase#ViewSecureContentAndPageAsSiteMember" />
+		<property name="testray.component.names" value="Message Boards,Site Pages Administration" />
+
 		<execute macro="TestCase#getSiteName">
 			<return from="siteName" name="siteName" />
 			<var name="siteName" value="${siteName}" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelConfiguration">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Configuration" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Server Administration" />
 		</execute>
 
@@ -654,7 +707,9 @@
 			<var method="TestPropsUtil#get('email.password.1')" name="userPassword" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -665,7 +720,9 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -676,16 +733,20 @@
 			<var name="userScreenName" value="usersn2" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
 		<execute macro="Role#assignRegRoleCP">
-			<var name="roleName" value="Administrator" />
+			<var name="roleTitle" value="Administrator" />
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -694,7 +755,9 @@
 			<var name="userScreenName" value="usersn2" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -703,7 +766,9 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -712,7 +777,9 @@
 			<var name="userScreenName" value="usersn2" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -766,7 +833,7 @@
 
 		<execute macro="Blogs#addEntryWithPermissions">
 			<var name="entryContent" value="Blogs Entry Content" />
-			<var name="entryTitle" value="Blogs Entry Title" />
+			<var name="entryTitle" value="Blogs Entry Title GMB2" />
 			<var name="viewableBy" value="Site Members" />
 		</execute>
 
@@ -776,7 +843,7 @@
 
 		<execute macro="MessageboardsThread#addPGWithPermissions">
 			<var name="threadBody" value="MB Thread Message Body" />
-			<var name="threadSubject" value="MB Thread Message Subject" />
+			<var name="threadSubject" value="MB Thread Message Subject GMMB3" />
 			<var name="viewableBySelection" value="Site Members" />
 		</execute>
 
@@ -795,14 +862,13 @@
 
 		<execute macro="Gmail#viewMail">
 			<var name="emailFromUserName" value="Joe Bloggs" />
-			<var name="gmailAssetType" value="Blogs" />
-			<var name="gmailMessageBody" value="Blogs Entry Title" />
-			<var name="gmailMessageTitle" value="Test Test Published &quot;Blogs Entry Title&quot; on ${siteName} Blogs" />
+			<var name="gmailAssetType" value="GMB2" />
+			<var name="gmailMessageBody" value="Blogs Entry Title GMB2" />
+			<var name="gmailMessageTitle" value="Test Test Published &quot;Blogs Entry Title GMB2&quot; on ${siteName} Blogs" />
 		</execute>
 
 		<execute macro="Gmail#openMessageContinueReadingButton">
-			<var name="contentTitle" value="Blogs Entry Title" />
-			<var name="gmailAssetType" value="Blogs" />
+			<var name="contentTitle" value="Blogs Entry Title GMB2" />
 			<var name="pageName" value="Blog and Message Board Page" />
 			<var name="siteName" value="${siteName}" />
 		</execute>
@@ -821,13 +887,13 @@
 
 		<execute macro="Gmail#viewMail">
 			<var name="emailFromUserName" value="Test Test" />
-			<var name="gmailAssetType" value="Message Boards" />
+			<var name="gmailAssetType" value="GMMB3" />
 			<var name="gmailMessageBody" value="MB Thread Message Body" />
-			<var name="gmailMessageTitle" value="Message Boards Home - ${siteName} New Message: MB Thread Message Subject" />
+			<var name="gmailMessageTitle" value="Message Boards Home - ${siteName} New Message: MB Thread Message Subject GMMB3" />
 		</execute>
 
 		<execute macro="Gmail#openMessageLink">
-			<var name="contentTitle" value="MB Thread Message Subject" />
+			<var name="contentTitle" value="MB Thread Message Subject GMMB3" />
 			<var name="gmailAssetType" value="Message Boards" />
 			<var name="pageName" value="Blog and Message Board Page" />
 			<var name="siteName" value="${siteName}" />
@@ -843,9 +909,10 @@
 			<var name="pageName" value="Blog and Message Board Page" />
 		</execute>
 
-		<execute macro="Gmail#tearDown">
-			<var method="TestPropsUtil#get('email.address.2')" name="userEmailAddress" />
-			<var method="TestPropsUtil#get('email.password.2')" name="userPassword" />
+		<execute macro="Gmail#gotoHtmlMode" />
+
+		<execute macro="Gmail#deleteSpecificMail">
+			<var name="gmailMessageTitleList" value="Test Test Published &quot;Blogs Entry Title GMB2&quot; on ${siteName} Blogs,Message Boards Home - ${siteName} New Message: MB Thread Message Subject GMMB3,Your New Account,Your New Password,GMB2,GMMB3" />
 		</execute>
 
 		<execute macro="User#logoutAndLoginPG">
@@ -867,7 +934,7 @@
 		<execute macro="BlogsNavigator#gotoPG">
 			<var name="blogEntryURL" value="${blogEntryURL}" />
 			<var name="entryContent" value="Blogs Entry Content" />
-			<var name="entryTitle" value="Blogs Entry Title" />
+			<var name="entryTitle" value="Blogs Entry Title GMB2" />
 		</execute>
 
 		<execute macro="Navigator#gotoPage">
@@ -881,22 +948,28 @@
 			<var name="messageBoardsThreadURL" value="${messageBoardsThreadURL}" />
 			<var name="postCount" value="1" />
 			<var name="threadBody" value="MB Thread Message Body" />
-			<var name="threadSubject" value="MB Thread Message Subject" />
+			<var name="threadSubject" value="MB Thread Message Subject GMMB3" />
 		</execute>
 
 		<execute macro="MessageboardsThread#viewPG">
 			<var name="threadBody" value="MB Thread Message Body" />
-			<var name="threadSubject" value="MB Thread Message Subject" />
+			<var name="threadSubject" value="MB Thread Message Subject GMMB3" />
 		</execute>
 	</command>
 
-	<command name="ViewSecureContentAndPageAsUser" priority="3">
+	<command name="ViewSecureContentAndPageAsUser" priority="5">
+		<property name="portal.acceptance" value="pending" />
+		<property name="test.name.skip.portal.instance" value="SitepagesUsecase#ViewSecureContentAndPageAsUser" />
+		<property name="testray.component.names" value="Message Boards,Site Pages Administration,Training" />
+
 		<execute macro="TestCase#getSiteName">
 			<return from="siteName" name="siteName" />
 			<var name="siteName" value="${siteName}" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelConfiguration">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Configuration" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Server Administration" />
 		</execute>
 
@@ -905,7 +978,9 @@
 			<var method="TestPropsUtil#get('email.password.1')" name="userPassword" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -916,7 +991,9 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -927,16 +1004,20 @@
 			<var name="userScreenName" value="usersn2" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
 		<execute macro="Role#assignRegRoleCP">
-			<var name="roleName" value="Administrator" />
+			<var name="roleTitle" value="Administrator" />
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -945,7 +1026,9 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -954,14 +1037,16 @@
 			<var name="userScreenName" value="usersn2" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
 		<execute macro="Page#add">
 			<var name="pageName" value="Test Private Page" />
 			<var name="siteName" value="${siteName}" />
-			<var name="sitePagePrivacy" value="Private Pages" />
+			<var name="sitePagePrivacy" value="Private" />
 		</execute>
 
 		<execute macro="Page#add">
@@ -1008,7 +1093,7 @@
 
 		<execute macro="Blogs#addEntryWithPermissions">
 			<var name="entryContent" value="Blogs Entry Content" />
-			<var name="entryTitle" value="Blogs Entry Title" />
+			<var name="entryTitle" value="Blogs Entry Title GMB3" />
 			<var name="viewableBy" value="Site Members" />
 		</execute>
 
@@ -1018,7 +1103,7 @@
 
 		<execute macro="MessageboardsThread#addPGWithPermissions">
 			<var name="threadBody" value="MB Thread Message Body" />
-			<var name="threadSubject" value="MB Thread Message Subject" />
+			<var name="threadSubject" value="MB Thread Message Subject GMMB4" />
 			<var name="viewableBySelection" value="Site Members" />
 		</execute>
 
@@ -1037,14 +1122,13 @@
 
 		<execute macro="Gmail#viewMail">
 			<var name="emailFromUserName" value="Joe Bloggs" />
-			<var name="gmailAssetType" value="Blogs" />
-			<var name="gmailMessageBody" value="Blogs Entry Title" />
-			<var name="gmailMessageTitle" value="Test Test Published &quot;Blogs Entry Title&quot; on ${siteName} Blogs" />
+			<var name="gmailAssetType" value="GMB3" />
+			<var name="gmailMessageBody" value="Blogs Entry Title GMB3" />
+			<var name="gmailMessageTitle" value="Test Test Published &quot;Blogs Entry Title GMB3&quot; on ${siteName} Blogs" />
 		</execute>
 
 		<execute macro="Gmail#openMessageContinueReadingButton">
-			<var name="contentTitle" value="Blogs Entry Title" />
-			<var name="gmailAssetType" value="Blogs" />
+			<var name="contentTitle" value="Blogs Entry Title GMB3" />
 			<var name="pageName" value="Blog and Message Board Page" />
 			<var name="siteName" value="${siteName}" />
 		</execute>
@@ -1063,13 +1147,13 @@
 
 		<execute macro="Gmail#viewMail">
 			<var name="emailFromUserName" value="Test Test" />
-			<var name="gmailAssetType" value="Message Boards" />
+			<var name="gmailAssetType" value="GMMB4" />
 			<var name="gmailMessageBody" value="MB Thread Message Body" />
-			<var name="gmailMessageTitle" value="Message Boards Home - ${siteName} New Message: MB Thread Message Subject" />
+			<var name="gmailMessageTitle" value="Message Boards Home - ${siteName} New Message: MB Thread Message Subject GMMB4" />
 		</execute>
 
 		<execute macro="Gmail#openMessageLink">
-			<var name="contentTitle" value="MB Thread Message Subject" />
+			<var name="contentTitle" value="MB Thread Message Subject GMMB4" />
 			<var name="gmailAssetType" value="Message Boards" />
 			<var name="pageName" value="Blog and Message Board Page" />
 			<var name="siteName" value="${siteName}" />
@@ -1085,9 +1169,10 @@
 			<var name="pageName" value="Blog and Message Board Page" />
 		</execute>
 
-		<execute macro="Gmail#tearDown">
-			<var method="TestPropsUtil#get('email.address.2')" name="userEmailAddress" />
-			<var method="TestPropsUtil#get('email.password.2')" name="userPassword" />
+		<execute macro="Gmail#gotoHtmlMode" />
+
+		<execute macro="Gmail#deleteSpecificMail">
+			<var name="gmailMessageTitleList" value="Test Test Published &quot;Blogs Entry Title GMB3&quot; on ${siteName} Blogs,Message Boards Home - ${siteName} New Message: MB Thread Message Subject GMMB4,Your New Account,Your New Password,GMB3,GMMB4" />
 		</execute>
 
 		<execute macro="User#logoutAndLoginPG">
@@ -1117,6 +1202,8 @@
 	</command>
 
 	<command name="WebContentAdministrationSitesPagesPanel" priority="3">
+		<property name="testray.component.names" value="Site Pages Administration" />
+
 		<execute macro="Page#add">
 			<var name="componentName" value="Collaboration" />
 			<var name="pageName" value="Panel Test Page" />
@@ -1184,8 +1271,15 @@
 		</execute>
 	</command>
 
-	<command name="WebContentAdministrationSitesPageTypes" priority="3">
-		<execute macro="ProductMenu#gotoControlPanelSites">
+	<command name="WebContentAdministrationSitesPageTypes" priority="5">
+		<property name="portal.acceptance" value="pending" />
+		<property name="testray.component.names" value="Site Pages Administration,Training" />
+
+		<var method="TestPropsUtil#get('portal.url')" name="portalURL" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -1193,7 +1287,9 @@
 			<var name="siteName" value="Page Type Test Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -1202,7 +1298,9 @@
 			<var name="siteName" value="Page Type Test Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -1227,7 +1325,9 @@
 			<var name="siteName" value="Page Type Test Site Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -1236,10 +1336,6 @@
 			<var name="pageTypeURL" value="http://iscaliforniaonfire.com/" />
 			<var name="siteName" value="Page Type Test Site Name" />
 			<var name="sitePageType" value="Embedded" />
-		</execute>
-
-		<execute macro="ProductMenu#gotoControlPanelSites">
-			<var name="portlet" value="Sites" />
 		</execute>
 
 		<execute macro="Page#add">
@@ -1259,9 +1355,9 @@
 			<var name="siteName" value="Page Type Test Site Name" />
 		</execute>
 
-		<var name="key_pageName" value="Link to URL Page" />
-
-		<execute function="AssertClick" locator1="Home#PAGE" value1="Link to URL Page" />
+		<execute function="AssertClick" locator1="Home#PAGE" value1="Link to URL Page">
+			<var name="key_pageName" value="Link to URL Page" />
+		</execute>
 
 		<execute function="AssertLocation" value1="https://www.google.com/" />
 
@@ -1270,7 +1366,7 @@
 			<var name="siteName" value="Page Type Test Site Name" />
 		</execute>
 
-		<execute function="AssertLocation" value1="http://localhost:8080/web/page-type-test-site-name/embedded-page" />
+		<execute function="AssertLocation" value1="${portalURL}/web/page-type-test-site-name/embedded-page" />
 
 		<execute function="SelectFrame" locator1="IFrame#EMBEDDED_IFRAME" />
 		<execute function="AssertTextEquals#assertPartialText" locator1="Embedded#EMBEDDED_TEXT_YES" value1="Yes" />
@@ -1287,5 +1383,155 @@
 			<var name="pageName" value="Panel Page" />
 			<var name="portletNameList" value="Bookmarks,Friends Directory,My Sites,My Sites Directory,Page Comments,Page Flags,Page Ratings,Portal Directory,Site Members Directory" />
 		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Users and Organizations" />
+		</execute>
+
+		<execute macro="Organization#addCP">
+			<var name="orgName" value="United States" />
+			<var name="orgType" value="Organization" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Users and Organizations" />
+		</execute>
+
+		<execute macro="UsersAndOrganizationsNavigator#gotoOrganizations" />
+
+		<execute macro="Organization#addSiteCP">
+			<var name="orgName" value="United States" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Sites" />
+		</execute>
+
+		<execute macro="Page#add">
+			<var name="pageName" value="Home" />
+			<var name="siteName" value="United States" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Users and Organizations" />
+		</execute>
+
+		<execute macro="Organization#addCP">
+			<var name="orgName" value="Canada" />
+			<var name="orgType" value="Organization" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Users and Organizations" />
+		</execute>
+
+		<execute macro="UsersAndOrganizationsNavigator#gotoOrganizations" />
+
+		<execute macro="Organization#addSiteCP">
+			<var name="orgName" value="Canada" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Sites" />
+		</execute>
+
+		<execute macro="Page#add">
+			<var name="pageName" value="Home" />
+			<var name="siteName" value="Canada" />
+		</execute>
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Sites" />
+		</execute>
+
+		<execute macro="Page#add">
+			<var name="pageName" value="Page Set Page" />
+			<var name="siteName" value="Page Type Test Site Name" />
+			<var name="sitePageType" value="Page Set" />
+		</execute>
+
+		<var name="key_pageName" value="Page Set Page" />
+
+		<execute function="AssertElementNotPresent" locator1="Home#PAGE" value1="Page Set Page" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Sites" />
+		</execute>
+
+		<execute macro="Page#addChild">
+			<var name="page" value="Public Pages" />
+			<var name="pageName" value="Page Set Page" />
+			<var name="pageTypeURL" value="/web/united-states" />
+			<var name="siteChildPageName" value="United States" />
+			<var name="siteName" value="Page Type Test Site Name" />
+			<var name="sitePageType" value="Link to URL" />
+		</execute>
+
+		<execute macro="Navigator#openSiteURL">
+			<var name="siteName" value="Page Type Test Site Name" />
+		</execute>
+
+		<var name="key_pageName" value="Page Set Page" />
+
+		<execute function="AssertElementPresent" locator1="Home#PAGE" value1="Page Set Page" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
+			<var name="portlet" value="Sites" />
+		</execute>
+
+		<execute macro="Page#addChild">
+			<var name="page" value="Public Pages" />
+			<var name="pageName" value="Page Set Page" />
+			<var name="pageTypeURL" value="/web/canada" />
+			<var name="siteChildPageName" value="Canada" />
+			<var name="siteName" value="Page Type Test Site Name" />
+			<var name="sitePageType" value="Link to URL" />
+		</execute>
+
+		<execute macro="Navigator#openSiteURL">
+			<var name="siteName" value="Page Type Test Site Name" />
+		</execute>
+
+		<var name="key_pageName" value="Page Set Page" />
+
+		<execute function="AssertElementPresent" locator1="Home#PAGE" value1="Page Set Page" />
+
+		<execute macro="Page#gotoChildPagePG">
+			<var name="childPageName" value="United States" />
+			<var name="pageName" value="Page Set Page" />
+		</execute>
+
+		<execute function="AssertLocation" value1="${portalURL}/web/united-states" />
+		<execute function="AssertTextNotPresent" locator1="Home#ERROR_MESSAGE_ALERT_ERROR" value1="Not Found" />
+
+		<execute macro="Navigator#openSiteURL">
+			<var name="siteName" value="Page Type Test Site Name" />
+		</execute>
+
+		<execute macro="Page#gotoChildPagePG">
+			<var name="childPageName" value="Canada" />
+			<var name="pageName" value="Page Set Page" />
+		</execute>
+
+		<execute function="AssertLocation" value1="${portalURL}/web/canada" />
+		<execute function="AssertTextNotPresent" locator1="Home#ERROR_MESSAGE_ALERT_ERROR" value1="Not Found" />
 	</command>
 </definition>

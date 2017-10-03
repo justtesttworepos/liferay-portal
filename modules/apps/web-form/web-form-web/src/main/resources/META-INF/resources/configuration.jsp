@@ -23,8 +23,8 @@ boolean requireCaptcha = GetterUtil.getBoolean(portletPreferences.getValue("requ
 String successURL = portletPreferences.getValue("successURL", StringPool.BLANK);
 
 boolean sendAsEmail = GetterUtil.getBoolean(portletPreferences.getValue("sendAsEmail", StringPool.BLANK));
-String emailFromName = webFormGroupServiceConfiguration.emailFromName();
-String emailFromAddress = webFormGroupServiceConfiguration.emailFromAddress();
+String emailFromName = GetterUtil.getString(portletPreferences.getValue("emailFromName", webFormServiceConfiguration.emailFromName()));
+String emailFromAddress = GetterUtil.getString(portletPreferences.getValue("emailFromAddress", webFormServiceConfiguration.emailFromAddress()));
 String emailAddress = portletPreferences.getValue("emailAddress", StringPool.BLANK);
 String subject = portletPreferences.getValue("subject", StringPool.BLANK);
 
@@ -59,11 +59,11 @@ if (WebFormUtil.getTableRowsCount(company.getCompanyId(), databaseTableName) > 0
 						<liferay-ui:error key="successURLInvalid" message="please-enter-a-valid-url" />
 
 						<aui:field-wrapper cssClass="lfr-input-text-container" label="title">
-							<liferay-ui:input-localized cssClass="form-control lfr-input-text" name="title" xml="<%= titleXml %>" />
+							<liferay-ui:input-localized cssClass="lfr-input-text" name="title" xml="<%= titleXml %>" />
 						</aui:field-wrapper>
 
 						<aui:field-wrapper cssClass="lfr-textarea-container" label="description">
-							<liferay-ui:input-localized cssClass="form-control lfr-input-text" name="description" type="textarea" xml="<%= descriptionXml %>" />
+							<liferay-ui:input-localized cssClass="lfr-input-text" name="description" type="textarea" xml="<%= descriptionXml %>" />
 						</aui:field-wrapper>
 
 						<aui:input name="preferences--requireCaptcha--" type="checkbox" value="<%= requireCaptcha %>" />
@@ -99,7 +99,7 @@ if (WebFormUtil.getTableRowsCount(company.getCompanyId(), databaseTableName) > 0
 					<aui:fieldset cssClass="handle-data" label="file">
 						<aui:input name="preferences--saveToFile--" type="checkbox" value="<%= saveToFile %>" />
 
-						<liferay-ui:message arguments="<%= HtmlUtil.escape(WebFormUtil.getFileName(themeDisplay, portletResource, webFormGroupServiceConfiguration.dataRootDir())) %>" key="form-data-will-be-saved-to-x" />
+						<liferay-ui:message arguments="<%= HtmlUtil.escape(WebFormUtil.getFileName(themeDisplay, portletResource, webFormServiceConfiguration.dataRootDir())) %>" key="form-data-will-be-saved-to-x" />
 					</aui:fieldset>
 				</liferay-ui:panel>
 
@@ -241,7 +241,7 @@ if (WebFormUtil.getTableRowsCount(company.getCompanyId(), databaseTableName) > 0
 
 		webFields.delegate(['change', 'click', 'keydown'], toggleOptions, 'select');
 
-		<c:if test="<%= webFormGroupServiceConfiguration.validationScriptEnable() %>">
+		<c:if test="<%= webFormServiceConfiguration.validationScriptEnable() %>">
 			var toggleValidationOptions = function(event) {
 				this.next().toggle();
 			};

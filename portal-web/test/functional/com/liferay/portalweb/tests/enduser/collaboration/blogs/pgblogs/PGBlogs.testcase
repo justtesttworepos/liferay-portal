@@ -1,5 +1,6 @@
 <definition component-name="portal-collaboration">
 	<property name="portal.release" value="true" />
+	<property name="portal.upstream" value="true" />
 	<property name="custom.properties" value="default.layout.template.id=1_column" />
 	<property name="testray.main.component.name" value="Blogs" />
 
@@ -92,9 +93,7 @@
 		</for>
 	</command>
 
-	<command name="AddBlogsEntry" priority="5">
-		<property name="portal.acceptance" value="true" />
-
+	<command name="AddBlogsEntry" priority="4">
 		<execute macro="Navigator#gotoPage">
 			<var name="pageName" value="Blogs Page" />
 		</execute>
@@ -115,9 +114,7 @@
 		</execute>
 	</command>
 
-	<command name="AddBlogsEntryComment" priority="5">
-		<property name="portal.acceptance" value="true" />
-
+	<command name="AddBlogsEntryComment" priority="4">
 		<execute macro="Navigator#gotoPage">
 			<var name="pageName" value="Blogs Page" />
 		</execute>
@@ -201,7 +198,9 @@
 			<var name="pageName" value="Blogs Page" />
 		</execute>
 
-		<execute function="AssertClick" locator1="MenuItem#NOT_PUBLISHED" value1="Not Published (1)" />
+		<execute macro="Navigator#gotoNavItem">
+			<var name="navItem" value="Not Published (1)" />
+		</execute>
 
 		<execute macro="BlogsEntry#viewPG">
 			<var name="entryContent" value="Blogs Entry Content" />
@@ -243,7 +242,9 @@
 
 		<execute macro="Navigator#openURL" />
 
-		<execute macro="ProductMenu#gotoSitesContent">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Content" />
+			<var name="panel" value="Site Administration" />
 			<var name="portlet" value="Blogs" />
 		</execute>
 
@@ -486,8 +487,94 @@
 		</execute>
 	</command>
 
+	<command name="AddCustomURL" priority="4">
+		<description message="This is usecase 3 for LPS-69240" />
+
+		<var method="TestPropsUtil#get('portal.url')" name="portalURL" />
+
+		<var name="entryContent" value="Blogs Entry Content" />
+		<var name="entrySubtitle" value="Blogs Entry Subtitle" />
+		<var name="entryTitle" value="Blogs Entry Title" />
+
+		<execute macro="BlogsNavigator#gotoAddEntry" />
+
+		<execute macro="BlogsEntry#addEntryContent">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute function="AssertChecked" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="ScrollWebElementIntoView" locator1="Button#PUBLISH" />
+
+		<execute function="Check" locator1="Radio#CUSTOM_URL" />
+
+		<execute function="Type" locator1="TextInput#BLOGS_ENTRY_URL" value1="custom-url-here" />
+
+		<execute macro="PortletEntry#publish" />
+
+		<execute macro="Navigator#openSpecificURL">
+			<var name="url" value="${portalURL}/web/guest/blogs-page/-/blogs/custom-url-here" />
+		</execute>
+
+		<execute macro="BlogsEntry#viewEntry">
+			<var name="entryContent" value="Blogs Entry Content" />
+			<var name="entryTitle" value="Blogs Entry Title" />
+		</execute>
+	</command>
+
+	<command name="AddDuplicateCustomURL" priority="4">
+		<description message="This is usecase 4 for LPS-69240" />
+
+		<var name="entryContent" value="Blogs Entry Content" />
+		<var name="entrySubtitle" value="Blogs Entry Subtitle" />
+		<var name="entryTitle" value="Blogs Entry Title" />
+
+		<execute macro="Blogs#addEntry">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Navigator#gotoPage">
+			<var name="pageName" value="Blogs Page" />
+		</execute>
+
+		<execute macro="BlogsNavigator#gotoAddEntry" />
+
+		<execute macro="BlogsEntry#addEntryContent">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute function="AssertChecked" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="ScrollWebElementIntoView" locator1="Button#PUBLISH" />
+
+		<execute function="Check" locator1="Radio#CUSTOM_URL" />
+
+		<execute function="Type" locator1="TextInput#BLOGS_ENTRY_URL" value1="blogs-entry-title" />
+
+		<execute macro="Button#clickPublish" />
+
+		<execute function="AssertTextEquals" locator1="Message#ERROR" value1="Your request failed to complete." />
+		<execute function="AssertTextEquals" locator1="Message#ERROR_2" value1="The URL title is already in use. Please enter a unique URL title." />
+	</command>
+
 	<command name="AddPortletToOrganizationSitePublicPage" priority="4">
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -496,7 +583,9 @@
 			<var name="orgType" value="Organization" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -506,7 +595,9 @@
 			<var name="orgName" value="Organization Name" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelSites">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Sites" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Sites" />
 		</execute>
 
@@ -530,6 +621,156 @@
 		</execute>
 
 		<execute macro="Blogs#viewControlsPG" />
+	</command>
+
+	<command name="AssertAutomaticURL" priority="4">
+		<description message="This is usecase 1 for LPS-69240" />
+
+		<var name="entryContent" value="Blogs Entry Content" />
+		<var name="entrySubtitle" value="Blogs Entry Subtitle" />
+		<var name="entryTitle" value="Blogs Entry Title" />
+
+		<execute macro="BlogsNavigator#gotoAddEntry" />
+
+		<execute macro="BlogsEntry#addEntryContent">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute function="AssertChecked" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="AssertTextEquals" locator1="TextInput#BLOGS_ENTRY_URL" value1="blogs-entry-title" />
+
+		<execute macro="PortletEntry#publish" />
+	</command>
+
+	<command name="AssertDuplicateAutomaticURLNormalizes" priority="4">
+		<description message="This is usecase 2 for LPS-69240" />
+
+		<var name="entryContent" value="Blogs Entry Content" />
+		<var name="entrySubtitle" value="Blogs Entry Subtitle" />
+		<var name="entryTitle" value="Blogs Entry Title" />
+
+		<execute macro="Blogs#addEntry">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Navigator#gotoPage">
+			<var name="pageName" value="Blogs Page" />
+		</execute>
+
+		<execute macro="Blogs#addEntry">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Navigator#gotoPage">
+			<var name="pageName" value="Blogs Page" />
+		</execute>
+
+		<execute macro="BlogsNavigator#gotoEditPG">
+			<var name="entryTitle" value="Blogs Entry Title" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute function="AssertChecked" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="AssertTextEquals" locator1="TextInput#BLOGS_ENTRY_URL" value1="blogs-entry-title-1" />
+	</command>
+
+	<command name="AssertInputBetweenStateChanges" priority="4">
+		<description message="These are usecases 6-8 for LPS-69240" />
+
+		<var name="entryContent" value="Blogs Entry Content" />
+		<var name="entrySubtitle" value="Blogs Entry Subtitle" />
+		<var name="entryTitle" value="Blogs Entry Title" />
+
+		<execute macro="BlogsNavigator#gotoAddEntry" />
+
+		<execute macro="BlogsEntry#addEntryContent">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute function="AssertChecked" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="ScrollWebElementIntoView" locator1="Button#PUBLISH" />
+
+		<execute function="Check" locator1="Radio#CUSTOM_URL" />
+
+		<execute function="Type" locator1="TextInput#BLOGS_ENTRY_URL" value1="custom-url" />
+
+		<execute function="Check" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="AssertTextEquals" locator1="TextInput#BLOGS_ENTRY_URL" value1="blogs-entry-title" />
+
+		<execute function="ScrollWebElementIntoView" locator1="Button#PUBLISH" />
+
+		<execute function="Check" locator1="Radio#CUSTOM_URL" />
+
+		<execute function="AssertTextEquals" locator1="TextInput#BLOGS_ENTRY_URL" value1="custom-url" />
+
+		<execute function="Type" locator1="TextInput#BLOGS_ENTRY_URL" value1="custom-url-2" />
+
+		<execute macro="PortletEntry#publish" />
+	</command>
+
+	<command name="AssertValidationForCustomURL" priority="4">
+		<description message="This is usecase 5 for LPS-69240" />
+
+		<var name="entryContent" value="Blogs Entry Content" />
+		<var name="entrySubtitle" value="Blogs Entry Subtitle" />
+		<var name="entryTitle" value="Blogs Entry Title" />
+
+		<execute macro="Blogs#addEntry">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entrySubtitle" value="${entrySubtitle}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Navigator#gotoPage">
+			<var name="pageName" value="Blogs Page" />
+		</execute>
+
+		<execute macro="BlogsNavigator#gotoAddEntry" />
+
+		<execute macro="BlogsEntry#addEntryContent">
+			<var name="entryContent" value="${entryContent}" />
+			<var name="entryTitle" value="${entryTitle}" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute function="AssertChecked" locator1="Radio#AUTOMATIC_URL" />
+
+		<execute function="ScrollWebElementIntoView" locator1="Button#PUBLISH" />
+
+		<execute function="Check" locator1="Radio#CUSTOM_URL" />
+
+		<execute function="Type" locator1="TextInput#BLOGS_ENTRY_URL" value1="blogs-entry-title" />
+
+		<execute macro="Button#clickPublish" />
+
+		<execute function="AssertTextEquals" locator1="Message#ERROR" value1="Your request failed to complete." />
+
+		<execute function="AssertTextEquals" locator1="TextInput#BLOGS_ENTRY_URL" value1="blogs-entry-title" />
 	</command>
 
 	<command name="DeleteBlogsEntries" priority="5">
@@ -882,7 +1123,9 @@
 
 		<execute macro="Navigator#openURL" />
 
-		<execute macro="ProductMenu#gotoSitesContent">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Content" />
+			<var name="panel" value="Site Administration" />
 			<var name="portlet" value="Blogs" />
 		</execute>
 
@@ -913,7 +1156,9 @@
 
 		<execute macro="Navigator#openURL" />
 
-		<execute macro="ProductMenu#gotoSitesContent">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Content" />
+			<var name="panel" value="Site Administration" />
 			<var name="portlet" value="Blogs" />
 		</execute>
 
@@ -1156,7 +1401,9 @@
 			<var name="siteName" value="${siteName}" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -1167,12 +1414,14 @@
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Roles" />
 		</execute>
 
 		<execute macro="Role#assignRegRoleCP">
-			<var name="roleName" value="Administrator" />
+			<var name="roleTitle" value="Administrator" />
 			<var name="userScreenName" value="usersn1" />
 		</execute>
 
@@ -1213,7 +1462,9 @@
 			<var name="siteName" value="${siteName}" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -1224,7 +1475,9 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -1233,7 +1486,9 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -1277,6 +1532,66 @@
 			<var name="recipient" value="userfn userln" />
 			<var name="sender" value="Joe Bloggs" />
 			<var name="subject" value="Blogs Entry Title" />
+		</execute>
+	</command>
+
+	<command name="ViewBlogEntryViaEditedCustomURL">
+		<description message="This is a usecase for LPS-66970" />
+
+		<execute macro="Navigator#gotoPage">
+			<var name="pageName" value="Blogs Page" />
+		</execute>
+
+		<execute macro="Blogs#addEntry">
+			<var name="entryContent" value="Blogs Entry Content" />
+			<var name="entryTitle" value="Blogs Entry Title" />
+		</execute>
+
+		<execute macro="Navigator#openSpecificURL">
+			<var name="url" value="/web/guest/blogs-page/-/blogs/blogs-entry-title" />
+		</execute>
+
+		<execute macro="BlogsEntry#viewEntry">
+			<var name="entryContent" value="Blogs Entry Content" />
+			<var name="entryTitle" value="Blogs Entry Title" />
+		</execute>
+
+		<execute macro="BlogsNavigator#gotoEditPG">
+			<var name="entryTitle" value="Blogs Entry Title" />
+		</execute>
+
+		<execute macro="Panel#expandPanel">
+			<var name="panelHeading" value="Configuration" />
+		</execute>
+
+		<execute macro="BlogsEntry#addCustomURL">
+			<var name="customURL" value="this-should-redirect-to-the-previous-entry" />
+		</execute>
+
+		<execute function="SelectFrame#selectFrameTop" />
+
+		<execute macro="PortletEntry#publish" />
+
+		<execute macro="User#logoutPG" />
+
+		<execute macro="Navigator#openSpecificURL">
+			<var name="url" value="/web/guest/blogs-page/-/blogs/this-should-redirect-to-the-previous-entry" />
+		</execute>
+
+		<execute macro="BlogsEntry#viewEntry">
+			<var name="entryContent" value="Blogs Entry Content" />
+			<var name="entryTitle" value="Blogs Entry Title" />
+		</execute>
+
+		<execute macro="Navigator#openURL" />
+
+		<execute macro="Navigator#openSpecificURL">
+			<var name="url" value="/web/guest/blogs-page/-/blogs/blogs-entry-title" />
+		</execute>
+
+		<execute macro="BlogsEntry#viewEntry">
+			<var name="entryContent" value="Blogs Entry Content" />
+			<var name="entryTitle" value="Blogs Entry Title" />
 		</execute>
 	</command>
 
@@ -1333,13 +1648,13 @@
 			<var name="pageName" value="Blogs Page" />
 		</execute>
 
-		<execute macro="PermissionsInline#gotoBlogsEntryPG" />
+		<execute macro="BlogsNavigator#gotoBlogsEntryPermissionsPG" />
 
 		<execute macro="Role#removePermissionPG">
 			<var name="entryTitle" value="Blogs Entry Title" />
 			<var name="pageName" value="Blogs Page" />
 			<var name="permissionDefinitionKey" value="CONTENT_PERMISSIONS_ADD_DISCUSSION_CHECKBOX" />
-			<var name="roleName" value="Guest" />
+			<var name="roleTitle" value="Guest" />
 		</execute>
 
 		<execute macro="Navigator#gotoPage">
@@ -1384,7 +1699,9 @@
 			<var name="entryTitle" value="Blogs Entry Title" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -1395,7 +1712,9 @@
 			<var name="userScreenName" value="usersn" />
 		</execute>
 
-		<execute macro="ProductMenu#gotoControlPanelUsers">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Users" />
+			<var name="panel" value="Control Panel" />
 			<var name="portlet" value="Users and Organizations" />
 		</execute>
 
@@ -1441,6 +1760,8 @@
 			<var name="entryContent" value="Blogs Entry Content" />
 			<var name="entryTitle" value="Blogs Entry Title" />
 		</execute>
+
+		<execute function="Pause" locator1="3000" />
 
 		<execute macro="BlogsEntry#viewRSS">
 			<var name="entryContent" value="Blogs Entry Content" />
@@ -1598,7 +1919,9 @@
 
 		<execute macro="Navigator#openURL" />
 
-		<execute macro="ProductMenu#gotoSitesContent">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Content" />
+			<var name="panel" value="Site Administration" />
 			<var name="portlet" value="Blogs" />
 		</execute>
 
@@ -1693,7 +2016,7 @@
 
 		<execute macro="BlogsEntry#removeViewPermissionsPG">
 			<var name="entryTitle" value="Blogs Entry1 Title" />
-			<var name="roleName" value="Guest" />
+			<var name="roleTitle" value="Guest" />
 		</execute>
 
 		<execute macro="User#logoutPG" />
@@ -1758,6 +2081,7 @@
 		</execute>
 
 		<execute macro="Blogs#addEntryWithUploadedCoverImage">
+			<var name="coverImageName" value="Document_1" />
 			<var name="entryContent" value="Blogs Entry Content" />
 			<var name="entrySubtitle" value="Blogs Entry Subtitle" />
 			<var name="entryTitle" value="Blogs Entry Title" />
@@ -1796,18 +2120,18 @@
 
 		<execute macro="Role#removePermissionPG">
 			<var name="permissionDefinitionKey" value="CONFIGURATION_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Guest" />
+			<var name="roleTitle" value="Guest" />
 		</execute>
 
 		<execute macro="Role#removePermissionPG">
 			<var name="permissionDefinitionKey" value="CONFIGURATION_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Site Member" />
+			<var name="roleTitle" value="Site Member" />
 		</execute>
 
 		<for list="CONFIGURATION_PERMISSIONS_ADD_DISPLAY_TEMPLATE_CHECKBOX,CONFIGURATION_PERMISSIONS_ADD_TO_PAGE_CHECKBOX,CONFIGURATION_PERMISSIONS_CONFIGURATION_CHECKBOX,CONFIGURATION_PERMISSIONS_CONFIGURATION_CHECKBOX,CONFIGURATION_PERMISSIONS_VIEW_CHECKBOX,CONFIGURATION_PERMISSIONS_PERMISSIONS_CHECKBOX" param="permissionDefinitionKeyValue" >
 			<execute macro="Role#removePermissionPG">
 				<var name="permissionDefinitionKey" value="${permissionDefinitionKeyValue}" />
-				<var name="roleName" value="Owner" />
+				<var name="roleTitle" value="Owner" />
 			</execute>
 		</for>
 
@@ -1824,60 +2148,19 @@
 
 		<execute macro="PermissionsInline#viewPermissionsRemoved">
 			<var name="permissionDefinitionKey" value="CONFIGURATION_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Guest" />
+			<var name="roleTitle" value="Guest" />
 		</execute>
 
 		<execute macro="PermissionsInline#viewPermissionsRemoved">
 			<var name="permissionDefinitionKey" value="CONFIGURATION_PERMISSIONS_VIEW_CHECKBOX" />
-			<var name="roleName" value="Site Member" />
+			<var name="roleTitle" value="Site Member" />
 		</execute>
 
 		<for list="CONFIGURATION_PERMISSIONS_ADD_DISPLAY_TEMPLATE_CHECKBOX,CONFIGURATION_PERMISSIONS_ADD_TO_PAGE_CHECKBOX,CONFIGURATION_PERMISSIONS_CONFIGURATION_CHECKBOX,CONFIGURATION_PERMISSIONS_CONFIGURATION_CHECKBOX,CONFIGURATION_PERMISSIONS_VIEW_CHECKBOX,CONFIGURATION_PERMISSIONS_PERMISSIONS_CHECKBOX" param="permissionDefinitionKeyValue" >
 			<execute macro="PermissionsInline#viewPermissionsRemoved">
 				<var name="permissionDefinitionKey" value="${permissionDefinitionKeyValue}" />
-				<var name="roleName" value="Owner" />
+				<var name="roleTitle" value="Owner" />
 			</execute>
 		</for>
-	</command>
-
-	<command name="ViewEntryWithSocialBookmarksSites" priority="3">
-		<property name="hook.plugins.includes" value="social-bookmarks-hook" />
-
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Blogs Page" />
-		</execute>
-
-		<execute macro="Blogs#addEntry">
-			<var name="entryContent" value="Blogs Entry Content" />
-			<var name="entrySubtitle" value="Blogs Entry Subtitle" />
-			<var name="entryTitle" value="Blogs Entry Title" />
-		</execute>
-
-		<execute macro="Blogs#enableSocialBookmarkSites">
-			<var name="socialBookmarkSites" value="twitter,facebook,plusone,addthis,blinklist,delicious,digg,evernote,linkedin,newsvine,reddit,slashdot,stumbleupon,technorati,tuenti" />
-		</execute>
-
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Blogs Page" />
-		</execute>
-
-		<execute macro="BlogsNavigator#gotoEntryPG">
-			<var name="entryContent" value="Blogs Entry Content" />
-			<var name="entryTitle" value="Blogs Entry Title" />
-		</execute>
-
-		<execute macro="BlogsEntry#viewEnabledSocialBookmarkSites">
-			<var name="socialBookmarkSites" value="Twitter,Facebook,Google+,LinkedIn,BlinkList,Delicious,Digg,Evernote,Newsvine,Reddit,Slashdot,StumbleUpon,Technorati,Tuenti" />
-		</execute>
-
-		<execute macro="Blogs#disableSocialBookmarkSites">
-			<var name="socialBookmarkSites" value="twitter,facebook,plusone,addthis,blinklist,delicious,digg,evernote,linkedin,newsvine,reddit,slashdot,stumbleupon,technorati,tuenti" />
-		</execute>
-
-		<execute macro="Navigator#gotoPage">
-			<var name="pageName" value="Blogs Page" />
-		</execute>
-
-		<execute macro="BlogsEntry#viewDisabledSocialBookmarkSites" />
 	</command>
 </definition>
