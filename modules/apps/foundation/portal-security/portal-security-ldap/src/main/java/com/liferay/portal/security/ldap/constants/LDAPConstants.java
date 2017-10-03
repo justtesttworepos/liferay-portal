@@ -23,9 +23,16 @@ public class LDAPConstants {
 
 	public static final String AUTH_METHOD = "method";
 
+	public static final String AUTH_METHOD_BIND = "bind";
+
+	public static final String AUTH_METHOD_PASSWORD_COMPARE =
+		"password-compare";
+
 	public static final String AUTH_REQUIRED = "required";
 
 	public static final String AUTH_SEARCH_FILTER = "authSearchFilter";
+
+	public static final String AUTH_SERVER_PRIORITY = "authServerPriority";
 
 	public static final String BASE_DN = "baseDN";
 

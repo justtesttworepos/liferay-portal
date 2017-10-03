@@ -14,21 +14,26 @@
 
 package com.liferay.staging.security.internal.permission;
 
+import aQute.bnd.annotation.ProviderType;
+
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactory;
+import com.liferay.portal.kernel.service.PersistedModelLocalServiceRegistry;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
 import org.osgi.util.tracker.ServiceTracker;
 
 /**
  * @author Tomas Polesovsky
  */
 @Component(immediate = true, property = {"service.ranking:Integer=1000"})
+@ProviderType
 public class StagingPermissionCheckerFactory
 	implements PermissionCheckerFactory {
 
@@ -38,7 +43,8 @@ public class StagingPermissionCheckerFactory
 			_serviceTracker.getService();
 
 		return new StagingPermissionChecker(
-			permissionCheckerFactory.create(user));
+			permissionCheckerFactory.create(user),
+			_persistedModelLocalServiceRegistry);
 	}
 
 	@Activate
@@ -60,6 +66,10 @@ public class StagingPermissionCheckerFactory
 		"(&(objectClass=" + PermissionCheckerFactory.class.getName() + ")" +
 			"(!(component.name=" +
 				StagingPermissionCheckerFactory.class.getName() + ")))";
+
+	@Reference
+	private PersistedModelLocalServiceRegistry
+		_persistedModelLocalServiceRegistry;
 
 	private ServiceTracker<PermissionCheckerFactory, PermissionCheckerFactory>
 		_serviceTracker;

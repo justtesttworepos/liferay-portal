@@ -14,6 +14,8 @@
 
 package com.liferay.exportimport.lar;
 
+import aQute.bnd.annotation.ProviderType;
+
 import com.liferay.exportimport.kernel.lar.ManifestSummary;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.PortletDataContextFactory;
@@ -48,6 +50,7 @@ import org.osgi.service.component.annotations.Reference;
  * @author Mate Thurzo
  */
 @Component(immediate = true)
+@ProviderType
 public class PortletDataContextFactoryImpl
 	implements PortletDataContextFactory {
 
@@ -60,7 +63,7 @@ public class PortletDataContextFactoryImpl
 		}
 
 		PortletDataContext clonePortletDataContext = new PortletDataContextImpl(
-			_lockManager);
+			_lockManager, false);
 
 		clonePortletDataContext.setCompanyId(portletDataContext.getCompanyId());
 		clonePortletDataContext.setCompanyGroupId(
@@ -68,7 +71,11 @@ public class PortletDataContextFactoryImpl
 		clonePortletDataContext.setDataStrategy(
 			portletDataContext.getDataStrategy());
 		clonePortletDataContext.setEndDate(portletDataContext.getEndDate());
+		clonePortletDataContext.setExportDataRootElement(
+			portletDataContext.getExportDataRootElement());
 		clonePortletDataContext.setGroupId(portletDataContext.getGroupId());
+		clonePortletDataContext.setImportDataRootElement(
+			portletDataContext.getImportDataRootElement());
 
 		long[] layoutIds = portletDataContext.getLayoutIds();
 
@@ -107,6 +114,8 @@ public class PortletDataContextFactoryImpl
 			portletDataContext.getUserIdStrategy());
 		clonePortletDataContext.setUserPersonalSiteGroupId(
 			portletDataContext.getUserPersonalSiteGroupId());
+		clonePortletDataContext.setZipReader(portletDataContext.getZipReader());
+		clonePortletDataContext.setZipWriter(portletDataContext.getZipWriter());
 
 		return clonePortletDataContext;
 	}
@@ -151,6 +160,14 @@ public class PortletDataContextFactoryImpl
 		portletDataContext.setZipReader(zipReader);
 
 		readXML(portletDataContext);
+
+		Map<Long, Long> groupIds =
+			(Map<Long, Long>)portletDataContext.getNewPrimaryKeysMap(
+				Group.class);
+
+		groupIds.put(
+			portletDataContext.getSourceCompanyGroupId(),
+			portletDataContext.getCompanyGroupId());
 
 		return portletDataContext;
 	}
@@ -199,7 +216,10 @@ public class PortletDataContextFactoryImpl
 		}
 		catch (Exception e) {
 			if (!CompanyThreadLocal.isDeleteInProcess()) {
-				throw new IllegalStateException(e);
+				throw new IllegalStateException(
+					"Unable to create a portlet data context for company " +
+						companyId + " because it is being deleted",
+					e);
 			}
 		}
 
@@ -218,7 +238,10 @@ public class PortletDataContextFactoryImpl
 		}
 		catch (Exception e) {
 			if (!CompanyThreadLocal.isDeleteInProcess()) {
-				throw new IllegalStateException(e);
+				throw new IllegalStateException(
+					"Unable to create a portlet data context for company " +
+						companyId + " because it is being deleted",
+					e);
 			}
 		}
 
@@ -238,7 +261,10 @@ public class PortletDataContextFactoryImpl
 			rootElement = document.getRootElement();
 		}
 		catch (Exception e) {
-			throw new PortletDataException(e);
+			throw new PortletDataException(
+				"Unable to create portlet data context for the import " +
+					"process because of an invalid LAR manifest",
+				e);
 		}
 
 		portletDataContext.setImportDataRootElement(rootElement);

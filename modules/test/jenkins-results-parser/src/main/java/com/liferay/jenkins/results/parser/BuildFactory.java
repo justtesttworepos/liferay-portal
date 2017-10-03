@@ -14,22 +14,27 @@
 
 package com.liferay.jenkins.results.parser;
 
+import java.io.IOException;
+import java.io.StringReader;
+
+import java.util.Properties;
+
 /**
  * @author Peter Yoo
  */
 public class BuildFactory {
 
-	public static Build newBuild(String url, Build parentBuild)
-		throws Exception {
-
+	public static Build newBuild(String url, Build parentBuild) {
 		url = JenkinsResultsParserUtil.getLocalURL(url);
 
 		if (url.contains("AXIS_VARIABLE=")) {
 			return new AxisBuild(url, (BatchBuild)parentBuild);
 		}
 
-		if (url.contains("-source")) {
-			return new SourceBuild(url, parentBuild);
+		for (String sourceIndicator : _SOURCE_INDICATORS) {
+			if (url.contains(sourceIndicator)) {
+				return new SourceBuild(url, parentBuild);
+			}
 		}
 
 		for (String batchIndicator : _BATCH_INDICATORS) {
@@ -38,9 +43,53 @@ public class BuildFactory {
 			}
 		}
 
-		return new TopLevelBuild(url, (TopLevelBuild)parentBuild);
+		TopLevelBuild topLevelBuild = new TopLevelBuild(
+			url, (TopLevelBuild)parentBuild);
+
+		String jobName = topLevelBuild.getJobName();
+
+		if ((parentBuild != null) &&
+			jobName.equals("test-portal-acceptance-pullrequest(ee-6.2.x)")) {
+
+			String jenkinsJobVariant = topLevelBuild.getParameterValue(
+				"JENKINS_JOB_VARIANT");
+
+			if ((jenkinsJobVariant != null) &&
+				jenkinsJobVariant.equals("rebase-error")) {
+
+				return new RebaseErrorTopLevelBuild(
+					url, (TopLevelBuild)parentBuild);
+			}
+		}
+
+		return topLevelBuild;
 	}
 
-	private static final String[] _BATCH_INDICATORS = {"-batch", "-dist"};
+	public static Build newBuildFromArchive(String archiveName) {
+		String url = JenkinsResultsParserUtil.combine(
+			"${dependencies.url}/", archiveName, "/", "archive.properties");
+
+		Properties archiveProperties = new Properties();
+
+		try {
+			archiveProperties.load(
+				new StringReader(
+					JenkinsResultsParserUtil.toString(
+						JenkinsResultsParserUtil.getLocalURL(url))));
+		}
+		catch (IOException ioe) {
+			throw new RuntimeException(
+				"Unable to find archive " + archiveName, ioe);
+		}
+
+		return newBuild(
+			archiveProperties.getProperty("top.level.build.url"), null);
+	}
+
+	private static final String[] _BATCH_INDICATORS =
+		{"-batch", "-dist", "environment-"};
+
+	private static final String[] _SOURCE_INDICATORS =
+		{"-source", "-validation"};
 
 }

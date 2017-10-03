@@ -15,6 +15,7 @@
 package com.liferay.gradle.plugins.internal;
 
 import com.liferay.gradle.plugins.BaseDefaultsPlugin;
+import com.liferay.gradle.plugins.LiferayOSGiPlugin;
 import com.liferay.gradle.plugins.extensions.LiferayExtension;
 import com.liferay.gradle.plugins.extensions.TomcatAppServer;
 import com.liferay.gradle.plugins.internal.util.GradleUtil;
@@ -27,16 +28,22 @@ import com.liferay.gradle.util.Validator;
 
 import java.io.File;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 
 /**
  * @author Andrea Di Giorgi
  */
 public class TestIntegrationDefaultsPlugin
 	extends BaseDefaultsPlugin<TestIntegrationPlugin> {
+
+	public static final Plugin<Project> INSTANCE =
+		new TestIntegrationDefaultsPlugin();
 
 	@Override
 	protected void configureDefaults(
@@ -48,15 +55,33 @@ public class TestIntegrationDefaultsPlugin
 		TomcatAppServer tomcatAppServer =
 			(TomcatAppServer)liferayExtension.getAppServer("tomcat");
 
-		configureTestIntegrationTomcat(
+		_configureTestIntegrationTomcat(
 			project, liferayExtension, tomcatAppServer);
 
-		configureTaskSetUpTestableTomcat(project, tomcatAppServer);
-		configureTaskStartTestableTomcat(project, tomcatAppServer);
-		configureTaskStopTestableTomcat(project, tomcatAppServer);
+		_configureTaskCopyTestModules(project);
+		_configureTaskSetUpTestableTomcat(project, tomcatAppServer);
+		_configureTaskStartTestableTomcat(project, tomcatAppServer);
+		_configureTaskStopTestableTomcat(project, tomcatAppServer);
 	}
 
-	protected void configureTaskSetUpTestableTomcat(
+	@Override
+	protected Class<TestIntegrationPlugin> getPluginClass() {
+		return TestIntegrationPlugin.class;
+	}
+
+	private TestIntegrationDefaultsPlugin() {
+	}
+
+	private void _configureTaskCopyTestModules(Project project) {
+		Task copyTestModulesTask = GradleUtil.getTask(
+			project, TestIntegrationPlugin.COPY_TEST_MODULES_TASK_NAME);
+
+		GradleUtil.setProperty(
+			copyTestModulesTask, LiferayOSGiPlugin.AUTO_CLEAN_PROPERTY_NAME,
+			false);
+	}
+
+	private void _configureTaskSetUpTestableTomcat(
 		Project project, final TomcatAppServer tomcatAppServer) {
 
 		SetUpTestableTomcatTask setUpTestableTomcatTask =
@@ -64,17 +89,16 @@ public class TestIntegrationDefaultsPlugin
 				project,
 				TestIntegrationPlugin.SET_UP_TESTABLE_TOMCAT_TASK_NAME);
 
-		String setenvGCNew = GradleUtil.getProperty(
-			project, "app.server.tomcat.setenv.gc.new", (String)null);
-		String setenvGCOld = GradleUtil.getProperty(
-			project, "app.server.tomcat.setenv.gc.old", (String)null);
-
-		if (Validator.isNotNull(setenvGCNew) &&
-			Validator.isNotNull(setenvGCOld)) {
-
-			setUpTestableTomcatTask.catalinaOptsReplacement(
-				setenvGCOld, setenvGCNew);
-		}
+		setUpTestableTomcatTask.setJaCoCoAgentConfiguration(
+			GradleUtil.getProperty(
+				project, "jacoco.agent.configuration", (String)null));
+		setUpTestableTomcatTask.setJaCoCoAgentFile(
+			GradleUtil.getProperty(project, "jacoco.agent.jar", (String)null));
+		setUpTestableTomcatTask.setAspectJAgent(
+			GradleUtil.getProperty(project, "aspectj.agent", (String)null));
+		setUpTestableTomcatTask.setAspectJConfiguration(
+			GradleUtil.getProperty(
+				project, "aspectj.configuration", (String)null));
 
 		setUpTestableTomcatTask.setZipUrl(
 			new Callable<String>() {
@@ -87,7 +111,7 @@ public class TestIntegrationDefaultsPlugin
 			});
 	}
 
-	protected void configureTaskStartTestableTomcat(
+	private void _configureTaskStartTestableTomcat(
 		Project project, final TomcatAppServer tomcatAppServer) {
 
 		StartTestableTomcatTask startTestableTomcatTask =
@@ -117,13 +141,20 @@ public class TestIntegrationDefaultsPlugin
 
 				@Override
 				public List<String> call() throws Exception {
+					String argLine = System.getProperty(
+						"app.server.start.executable.arg.line");
+
+					if (Validator.isNotNull(argLine)) {
+						return Arrays.asList(argLine.split(" "));
+					}
+
 					return tomcatAppServer.getStartExecutableArgs();
 				}
 
 			});
 	}
 
-	protected void configureTaskStopTestableTomcat(
+	private void _configureTaskStopTestableTomcat(
 		Project project, final TomcatAppServer tomcatAppServer) {
 
 		StopAppServerTask stopAppServerTask =
@@ -151,7 +182,7 @@ public class TestIntegrationDefaultsPlugin
 			});
 	}
 
-	protected void configureTestIntegrationTomcat(
+	private void _configureTestIntegrationTomcat(
 		Project project, final LiferayExtension liferayExtension,
 		final TomcatAppServer tomcatAppServer) {
 
@@ -228,11 +259,6 @@ public class TestIntegrationDefaultsPlugin
 				}
 
 			});
-	}
-
-	@Override
-	protected Class<TestIntegrationPlugin> getPluginClass() {
-		return TestIntegrationPlugin.class;
 	}
 
 }

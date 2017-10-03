@@ -183,7 +183,9 @@ public class InvokerFilter extends BasePortalLifecycle implements Filter {
 	protected InvokerFilterChain getInvokerFilterChain(
 		HttpServletRequest request, String uri, FilterChain filterChain) {
 
-		if (_filterChains == null) {
+		if ((_filterChains == null) ||
+			Validator.isNotNull(request.getQueryString())) {
+
 			return _invokerFilterHelper.createInvokerFilterChain(
 				request, _dispatcher, uri, filterChain);
 		}
@@ -219,8 +221,8 @@ public class InvokerFilter extends BasePortalLifecycle implements Filter {
 	}
 
 	/**
-	 * @deprecated As of 7.0.0, replaced by {@link
-	 *             #getURI(HttpServletRequest, String)}
+	 * @deprecated As of 7.0.0, replaced by {@link #getURI(HttpServletRequest,
+	 *             String)}
 	 */
 	@Deprecated
 	protected String getURI(HttpServletRequest request) {

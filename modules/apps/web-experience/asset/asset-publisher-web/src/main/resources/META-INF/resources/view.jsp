@@ -22,9 +22,7 @@ long assetCategoryId = ParamUtil.getLong(request, "categoryId");
 if (assetCategoryId > 0) {
 	AssetCategory assetCategory = AssetCategoryLocalServiceUtil.getCategory(assetCategoryId);
 
-	assetCategory = assetCategory.toEscapedModel();
-
-	PortalUtil.setPageKeywords(assetCategory.getTitle(locale), request);
+	PortalUtil.setPageKeywords(HtmlUtil.escape(assetCategory.getTitle(locale)), request);
 }
 
 String assetTagName = ParamUtil.getString(request, "tag");
@@ -93,7 +91,7 @@ if (!assetPublisherDisplayContext.isPaginationTypeNone()) {
 %>
 
 <c:if test="<%= assetPublisherDisplayContext.isShowMetadataDescriptions() %>">
-	<liferay-ui:categorization-filter
+	<liferay-asset:categorization-filter
 		assetType="content"
 		portletURL="<%= portletURL %>"
 	/>
@@ -115,6 +113,18 @@ request.setAttribute("view.jsp-viewInContext", assetPublisherDisplayContext.isAs
 <c:if test="<%= !assetPublisherDisplayContext.isPaginationTypeNone() && (searchContainer.getTotal() > searchContainer.getResults().size()) %>">
 	<liferay-ui:search-paginator searchContainer="<%= searchContainer %>" type="<%= assetPublisherDisplayContext.getPaginationType() %>" />
 </c:if>
+
+<aui:script use="querystring-parse">
+	var queryString = window.location.search.substring(1);
+
+	var queryParamObj = new A.QueryString.parse(queryString);
+
+	var assetEntryId = queryParamObj['<portlet:namespace />assetEntryId'];
+
+	if (assetEntryId) {
+		window.location.hash = assetEntryId;
+	}
+</aui:script>
 
 <%!
 private static Log _log = LogFactoryUtil.getLog("com_liferay_asset_publisher_web.view_jsp");

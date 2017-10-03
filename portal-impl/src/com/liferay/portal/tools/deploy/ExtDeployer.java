@@ -15,6 +15,7 @@
 package com.liferay.portal.tools.deploy;
 
 import com.liferay.portal.kernel.model.Plugin;
+import com.liferay.portal.kernel.util.StreamUtil;
 import com.liferay.portal.tools.ToolDependencies;
 
 import java.util.ArrayList;
@@ -22,7 +23,7 @@ import java.util.List;
 
 /**
  * @author     Brian Wing Shun Chan
- * @deprecated As of 6.2.0, with no direct replacement
+ * @deprecated As of 6.2.0
  */
 @Deprecated
 public class ExtDeployer extends BaseDeployer {
@@ -42,7 +43,7 @@ public class ExtDeployer extends BaseDeployer {
 			}
 		}
 
-		new ExtDeployer(wars, jars);
+		StreamUtil.cleanUp(new ExtDeployer(wars, jars));
 	}
 
 	public ExtDeployer() {

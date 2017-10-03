@@ -14,6 +14,9 @@
 
 package com.liferay.portal.service.test;
 
+import com.liferay.portal.kernel.concurrent.ThreadPoolExecutor;
+import com.liferay.portal.kernel.executor.PortalExecutorManager;
+import com.liferay.portal.kernel.executor.PortalExecutorManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.BaseDestination;
@@ -24,7 +27,6 @@ import com.liferay.portal.kernel.messaging.MessageBusUtil;
 import com.liferay.portal.kernel.messaging.SynchronousDestination;
 import com.liferay.portal.kernel.messaging.sender.SynchronousMessageSender;
 import com.liferay.portal.kernel.model.Portlet;
-import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.scheduler.SchedulerEngineHelper;
 import com.liferay.portal.kernel.scheduler.SchedulerEngineHelperUtil;
@@ -35,14 +37,15 @@ import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUti
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
-import com.liferay.portal.kernel.service.ResourceActionLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
-import com.liferay.portal.kernel.test.util.RoleTestUtil;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.ProxyUtil;
+import com.liferay.portal.kernel.util.ReflectionUtil;
 import com.liferay.portal.model.impl.PortletImpl;
 import com.liferay.portal.repository.liferayrepository.LiferayRepository;
 import com.liferay.portal.tools.DBUpgrader;
@@ -53,13 +56,20 @@ import com.liferay.registry.RegistryUtil;
 import com.liferay.registry.dependency.ServiceDependencyListener;
 import com.liferay.registry.dependency.ServiceDependencyManager;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import org.osgi.framework.Constants;
 
 /**
  * @author Brian Wing Shun Chan
@@ -72,53 +82,6 @@ public class ServiceTestUtil {
 	public static final int RETRY_COUNT = 10;
 
 	public static final int THREAD_COUNT = 10;
-
-	/**
-	 * @deprecated As of 7.0.0
-	 */
-	@Deprecated
-	public static void addResourcePermission(
-			Role role, String resourceName, int scope, String primKey,
-			String actionId)
-		throws Exception {
-
-		RoleTestUtil.addResourcePermission(
-			role, resourceName, scope, primKey, actionId);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0
-	 */
-	@Deprecated
-	public static void addResourcePermission(
-			String roleName, String resourceName, int scope, String primKey,
-			String actionId)
-		throws Exception {
-
-		RoleTestUtil.addResourcePermission(
-			roleName, resourceName, scope, primKey, actionId);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0
-	 */
-	@Deprecated
-	public static Role addRole(String roleName, int roleType) throws Exception {
-		return RoleTestUtil.addRole(roleName, roleType);
-	}
-
-	/**
-	 * @deprecated As of 7.0.0
-	 */
-	@Deprecated
-	public static Role addRole(
-			String roleName, int roleType, String resourceName, int scope,
-			String primKey, String actionId)
-		throws Exception {
-
-		return RoleTestUtil.addRole(
-			roleName, roleType, resourceName, scope, primKey, actionId);
-	}
 
 	public static void initMainServletServices() {
 
@@ -169,7 +132,8 @@ public class ServiceTestUtil {
 				"QuartzSchemaManager)");
 
 		schedulerServiceDependencyManager.registerDependencies(
-			new Class[] {SchedulerEngineHelper.class}, new Filter[] {filter});
+			new Class<?>[] {SchedulerEngineHelper.class},
+			new Filter[] {filter});
 
 		// Verify
 
@@ -249,6 +213,38 @@ public class ServiceTestUtil {
 				DestinationNames.DOCUMENT_LIBRARY_VIDEO_PROCESSOR);
 		}
 
+		// Shutdown
+
+		Registry registry = RegistryUtil.getRegistry();
+
+		HashMap<String, Object> messageBusProperties = new HashMap<>();
+
+		messageBusProperties.put(Constants.SERVICE_RANKING, Integer.MAX_VALUE);
+
+		registry.registerService(
+			MessageBus.class, _messageBusWrapper, messageBusProperties);
+
+		if (MessageBusUtil.getMessageBus() != _messageBusWrapper) {
+			throw new IllegalStateException("MessageBus should be set");
+		}
+
+		HashMap<String, Object> portalExecutorManagerProperties =
+			new HashMap<>();
+
+		portalExecutorManagerProperties.put(
+			Constants.SERVICE_RANKING, Integer.MAX_VALUE);
+
+		registry.registerService(
+			PortalExecutorManager.class, _portalExecutorManagerWrapper,
+			portalExecutorManagerProperties);
+
+		if (PortalExecutorManagerUtil.getPortalExecutorManager() !=
+				_portalExecutorManagerWrapper) {
+
+			throw new IllegalStateException(
+				"PortalExecutorManager should be set");
+		}
+
 		// Class names
 
 		_checkClassNames();
@@ -321,22 +317,7 @@ public class ServiceTestUtil {
 			portlet.setPortletId(portletId);
 			portlet.setPortletModes(new HashMap<String, Set<String>>());
 
-			List<String> portletActions =
-				ResourceActionsUtil.getPortletResourceActions(portletId);
-
-			ResourceActionLocalServiceUtil.checkResourceActions(
-				portletId, portletActions);
-
-			List<String> modelNames =
-				ResourceActionsUtil.getPortletModelResources(portletId);
-
-			for (String modelName : modelNames) {
-				List<String> modelActions =
-					ResourceActionsUtil.getModelResourceActions(modelName);
-
-				ResourceActionLocalServiceUtil.checkResourceActions(
-					modelName, modelActions);
-			}
+			ResourceActionsUtil.check(portletId);
 		}
 	}
 
@@ -355,7 +336,33 @@ public class ServiceTestUtil {
 
 		MessageBus messageBus = MessageBusUtil.getMessageBus();
 
-		messageBus.replace(baseDestination);
+		Destination oldDestination = messageBus.getDestination(name);
+
+		messageBus.replace(baseDestination, false);
+
+		ThreadPoolExecutor threadPoolExecutor =
+			PortalExecutorManagerUtil.getPortalExecutor(
+				oldDestination.getName(), false);
+
+		if (threadPoolExecutor == null) {
+			return;
+		}
+
+		threadPoolExecutor.shutdown();
+
+		try {
+			if (!threadPoolExecutor.awaitTermination(
+					TestPropsValues.CI_TEST_TIMEOUT_TIME,
+					TimeUnit.MILLISECONDS)) {
+
+				throw new IllegalStateException(
+					"Destination " + oldDestination.getName() +
+						" shutdown timeout");
+			}
+		}
+		catch (InterruptedException ie) {
+			ReflectionUtil.throwException(ie);
+		}
 	}
 
 	private static void _setThreadLocals() {
@@ -371,5 +378,81 @@ public class ServiceTestUtil {
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		ServiceTestUtil.class);
+
+	private static final MessageBus _messageBusWrapper =
+		(MessageBus)ProxyUtil.newProxyInstance(
+			MessageBus.class.getClassLoader(),
+			new Class<?>[] {MessageBus.class},
+
+			new InvocationHandler() {
+
+				@Override
+				public Object invoke(Object proxy, Method method, Object[] args)
+					throws Throwable {
+
+					if ("shutdown".equals(method.getName()) &&
+						(args.length == 1)) {
+
+						args[0] = Boolean.FALSE;
+					}
+
+					return method.invoke(_messageBus, args);
+				}
+
+				private final MessageBus _messageBus =
+					MessageBusUtil.getMessageBus();
+
+			});
+
+	private static final PortalExecutorManager _portalExecutorManagerWrapper =
+		(PortalExecutorManager)ProxyUtil.newProxyInstance(
+			PortalExecutorManager.class.getClassLoader(),
+			new Class<?>[] {PortalExecutorManager.class},
+			new InvocationHandler() {
+
+				@Override
+				public Object invoke(Object proxy, Method method, Object[] args)
+					throws Throwable {
+
+					if (!"shutdown".equals(method.getName()) ||
+						(args.length != 1)) {
+
+						return method.invoke(_portalExecutorManager, args);
+					}
+
+					Map<String, ThreadPoolExecutor> threadPoolExecutors =
+						ReflectionTestUtil.getFieldValue(
+							_portalExecutorManager, "_threadPoolExecutors");
+
+					for (Map.Entry<String, ThreadPoolExecutor> entry :
+							threadPoolExecutors.entrySet()) {
+
+						ThreadPoolExecutor threadPoolExecutor =
+							entry.getValue();
+
+						threadPoolExecutor.shutdown();
+
+						try {
+							if (!threadPoolExecutor.awaitTermination(
+									TestPropsValues.CI_TEST_TIMEOUT_TIME,
+									TimeUnit.MILLISECONDS)) {
+
+								throw new TimeoutException(
+									"Thread pool executor " + entry.getKey() +
+										" termination waiting timeout");
+							}
+						}
+						catch (InterruptedException ie) {
+							ReflectionUtil.throwException(ie);
+						}
+					}
+
+					return null;
+				}
+
+				private final PortalExecutorManager _portalExecutorManager =
+					PortalExecutorManagerUtil.getPortalExecutorManager();
+
+			});
 
 }

@@ -41,12 +41,12 @@ public class VerifyMySQL extends VerifyProcess {
 	protected void doVerify() throws Exception {
 		DB db = DBManagerUtil.getDB();
 
-		if (db.getDBType() != DBType.MYSQL) {
-			return;
-		}
+		if ((db.getDBType() == DBType.MARIADB) ||
+			(db.getDBType() == DBType.MYSQL)) {
 
-		verifyTableEngine();
-		verifyDatetimePrecision();
+			verifyTableEngine();
+			verifyDatetimePrecision();
+		}
 	}
 
 	protected String getActualColumnType(
@@ -77,8 +77,7 @@ public class VerifyMySQL extends VerifyProcess {
 
 		try (LoggingTimer loggingTimer = new LoggingTimer();
 			Statement statement = connection.createStatement();
-			ResultSet rs = databaseMetaData.getTables(
-				null, null, null, null)) {
+			ResultSet rs = databaseMetaData.getTables(null, null, null, null)) {
 
 			while (rs.next()) {
 				verifyDatetimePrecisionForTable(

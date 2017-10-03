@@ -5,9 +5,7 @@ AUI.add(
 
 		var TPL_SETTINGS_TOGGLER = '<button class="btn settings-toggler" type="button"><span class="settings-toggle-label"></span><span class="settings-toggle-icon"></span></button>';
 
-		var RendererUtil = Liferay.DDM.Renderer.Util;
-
-		var SoyTemplateUtil = Liferay.DDL.SoyTemplateUtil;
+		var SoyTemplateUtil = Liferay.DDM.SoyTemplateUtil;
 
 		var FormBuilderSettingsForm = A.Component.create(
 			{
@@ -28,13 +26,10 @@ AUI.add(
 					initializer: function() {
 						var instance = this;
 
-						var evaluator = instance.get('evaluator');
-
 						instance._eventHandlers.push(
-							evaluator.after('evaluationStarted', A.bind('_saveSettings', instance)),
 							instance.after('render', instance._afterSettingsFormRender),
 							instance.on('*:addOption', instance._afterAddOption),
-							instance.on('*:removeOption', instance.alignModal)
+							instance.on('*:removeOption', instance._afterRemoveOption)
 						);
 
 						instance._fieldEventHandlers = [];
@@ -53,34 +48,45 @@ AUI.add(
 						);
 					},
 
+					showLoadingFeedback: function() {
+						var instance = this;
+
+						FormBuilderSettingsForm.superclass.showLoadingFeedback.apply(instance, arguments);
+
+						instance.get('alert').hide();
+					},
+
 					_afterAddOption: function(event) {
 						var instance = this;
 
 						var optionsField = event.target;
 
-						var field = instance.get('field');
+						event.option.transient = true;
 
-						var builder = field.get('builder');
+						optionsField.eachOption(
+							function(option) {
+								option.set('keyInputEnabled', option.transient);
+							}
+						);
+					},
 
-						var definition = builder.get('definition');
+					_afterFieldValueChange: function(event) {
+						var instance = this;
 
-						var searchResults = RendererUtil.searchFieldsByKey(definition, field.get('fieldName'), 'fieldName');
+						var field = event.target;
+						var formBuilderField = instance.get('field');
 
-						if (searchResults.length) {
-							var definitionOptions = searchResults[0].options || [];
+						var localizedValue = field.get('context.localizedValue');
 
-							optionsField.eachOption(
-								function(option) {
-									var existingOption = definitionOptions.find(
-										function(definitionOption) {
-											return definitionOption.value === option.get('key');
-										}
-									);
+						if (localizedValue) {
+							var locale = formBuilderField.get('locale');
 
-									option.set('keyInputEnabled', !existingOption);
-								}
-							);
+							localizedValue[locale] = event.newVal;
 						}
+
+						formBuilderField.set('context.settingsContext', instance.get('context'));
+
+						instance._saveSettings();
 					},
 
 					_afterLabelFieldNormalizeKey: function(key) {
@@ -89,31 +95,27 @@ AUI.add(
 						return new A.Do.AlterReturn(null, instance.get('field').generateFieldName(A.Do.originalRetVal));
 					},
 
+					_afterRemoveOption: function(event) {
+						var instance = this;
+
+						var formBuilderField = instance.get('field');
+
+						formBuilderField.set('context.settingsContext', instance.get('context'));
+
+						formBuilderField.saveSettings();
+					},
+
 					_afterSettingsFormRender: function() {
 						var instance = this;
 
-						var editModeValue = instance.get('editMode');
+						instance._createSettingsFormEventHandlers();
+						instance._createAutocompleteElements();
 
-						var labelField = instance.getField('label');
+						instance._updateFormFieldProperties();
 
-						var nameField = instance.getField('name');
-
-						(new A.EventHandle(instance._fieldEventHandlers)).detach();
-
-						instance._fieldEventHandlers.push(
-							labelField.bindContainerEvent('keyup', A.bind('_onKeyUpKeyValueInput', instance, labelField), '.key-value-input'),
-							labelField.on('keyChange', A.bind('_onLabelFieldKeyChange', instance)),
-							labelField.after(A.bind('_afterLabelFieldNormalizeKey', instance), labelField, 'normalizeKey')
+						instance._eventHandlers.push(
+							instance.after('*:valueChange', instance._afterFieldValueChange)
 						);
-
-						labelField.set('key', nameField.getValue());
-						labelField.set('keyInputEnabled', editModeValue);
-						labelField.set('generationLocked', !editModeValue);
-
-						if (instance.get('field').get('type') === 'text') {
-							instance._createAutocompleteButton();
-							instance._createAutocompleteContainer();
-						}
 					},
 
 					_afterTabViewSelectionChange: function() {
@@ -140,13 +142,19 @@ AUI.add(
 
 						var emptyPageRenderer = SoyTemplateUtil.getTemplateRenderer('ddm.tabbed_form_frame');
 
-						var emptyPageNode = A.Node.create(emptyPageRenderer());
+						var container = document.createDocumentFragment();
+
+						new emptyPageRenderer({}, container);
+
+						var emptyPageNode = A.Node.create(container.firstChild.outerHTML);
 
 						var sidebarBody = A.one('.sidebar-body');
 
 						var dataSourceTypeContainer = instance.getField('dataSourceType').get('container');
 
 						var ddmDataProviderInstanceIdContainer = instance.getField('ddmDataProviderInstanceId').get('container');
+
+						var ddmDataProviderInstanceOutputContainer = instance.getField('ddmDataProviderInstanceOutput').get('container');
 
 						var optionsContainer = instance.getField('options').get('container');
 
@@ -156,12 +164,26 @@ AUI.add(
 
 						tabView.get('panelNode').append(emptyPageNode);
 
-						sidebarBody.one('.autocomplete-body').append(dataSourceTypeContainer);
-						sidebarBody.one('.autocomplete-body').append(ddmDataProviderInstanceIdContainer);
-						sidebarBody.one('.autocomplete-body').append(optionsContainer);
+						var autocompleteBody = sidebarBody.one('.autocomplete-body');
+
+						autocompleteBody.append(dataSourceTypeContainer);
+						autocompleteBody.append(ddmDataProviderInstanceIdContainer);
+						autocompleteBody.append(ddmDataProviderInstanceOutputContainer);
+						autocompleteBody.append(optionsContainer);
 
 						sidebarBody.one('.autocomplete-header-back').on('click', A.bind('_onClickAutocompleteHeaderBack', instance));
 						tabView.after('selectionChange', A.bind('_afterTabViewSelectionChange', instance));
+					},
+
+					_createAutocompleteElements: function() {
+						var instance = this;
+
+						var formBuilderFieldType = instance._getFormBuilderFieldType();
+
+						if (formBuilderFieldType === 'text') {
+							instance._createAutocompleteButton();
+							instance._createAutocompleteContainer();
+						}
 					},
 
 					_createModeToggler: function() {
@@ -178,32 +200,63 @@ AUI.add(
 						instance.settingsTogglerNode = settingsTogglerNode;
 					},
 
+					_createSettingsFormEventHandlers: function() {
+						var instance = this;
+
+						var labelField = instance.getField('label');
+
+						var fieldEventHandlers = new A.EventHandle(instance._fieldEventHandlers);
+
+						fieldEventHandlers.detach();
+
+						instance._fieldEventHandlers.push(
+							labelField.on('keyChange', A.bind('_onLabelFieldChange', instance)),
+							labelField.after(A.bind('_afterLabelFieldNormalizeKey', instance), labelField, 'normalizeKey')
+						);
+					},
+
 					_getAutocompleteCardActionTemplate: function() {
 						var instance = this;
 
-						var actionPanelRenderer = SoyTemplateUtil.getTemplateRenderer('ddl.autocomplete.actionPanel');
+						var actionPanelRenderer = SoyTemplateUtil.getTemplateRenderer('DDLAutoComplete.actionPanel');
 
-						return actionPanelRenderer(
+						var container = document.createDocumentFragment();
+
+						new actionPanelRenderer(
 							{
 								addAutoCompleteButton: Liferay.Util.getLexiconIconTpl('angle-right'),
 								label: Liferay.Language.get('autocomplete')
-							}
+							},
+							container
 						);
+
+						return container.firstChild.outerHTML;
 					},
 
 					_getAutocompleteContainerTemplate: function() {
 						var instance = this;
 
-						var autocompleteContainerRenderer = SoyTemplateUtil.getTemplateRenderer('ddl.autocomplete.container');
+						var autocompleteContainerRenderer = SoyTemplateUtil.getTemplateRenderer('DDLAutoComplete.container');
 
-						var autocompleteContainer = autocompleteContainerRenderer(
+						var container = document.createDocumentFragment();
+
+						new autocompleteContainerRenderer(
 							{
 								backButton: Liferay.Util.getLexiconIconTpl('angle-left', 'icon-monospaced'),
 								label: Liferay.Language.get('autocomplete')
-							}
+							},
+							container
 						);
 
-						return autocompleteContainer;
+						return container.firstChild.outerHTML;
+					},
+
+					_getFormBuilderFieldType: function() {
+						var instance = this;
+
+						var formBuilderField = instance.get('field');
+
+						return formBuilderField.get('type');
 					},
 
 					_handleValidationResponse: function(hasErrors) {
@@ -264,26 +317,21 @@ AUI.add(
 						instance._syncModeToggler();
 					},
 
-					_onKeyUpKeyValueInput: function() {
-						var instance = this;
-
-						instance._saveSettings();
-					},
-
-					_onLabelFieldKeyChange: function(event) {
+					_onLabelFieldChange: function(event) {
 						var instance = this;
 
 						var nameField = instance.getField('name');
 
-						nameField.setValue(event.newVal);
-					},
+						var formBuilderField = instance.get('field');
 
-					_onNameChange: function(event) {
-						var instance = this;
+						var locale = formBuilderField.get('locale');
 
-						var labelField = instance.getField('label');
+						if (locale === themeDisplay.getDefaultLanguageId()) {
+							nameField.set('value', event.newVal);
+							formBuilderField.set('context.fieldName', event.newVal);
+						}
 
-						labelField.set('key', event.newVal);
+						instance._saveSettings();
 					},
 
 					_onSubmitForm: function(event) {
@@ -297,7 +345,7 @@ AUI.add(
 
 						var field = instance.get('field');
 
-						field.saveSettings(instance);
+						field.saveSettings();
 					},
 
 					_showLastActivatedPage: function() {
@@ -330,6 +378,69 @@ AUI.add(
 						settingsTogglerNode.toggleClass('active', active);
 					},
 
+					_updateFormFieldProperties: function() {
+						var instance = this;
+
+						instance._updateTypeField();
+						instance._updateLabelField();
+						instance._updateOptionsFields();
+					},
+
+					_updateLabelField: function() {
+						var instance = this;
+
+						var editMode = instance.get('editMode');
+
+						var labelField = instance.getField('label');
+						var nameField = instance.getField('name');
+
+						var name = nameField.getValue();
+
+						if (!name) {
+							var formBuilderField = instance.get('field');
+
+							labelField.set('key', formBuilderField.generateFieldName(''));
+						}
+						else {
+							labelField.set('key', nameField.getValue());
+						}
+
+						labelField.set('keyInputEnabled', !editMode);
+						labelField.set('generationLocked', editMode);
+					},
+
+					_updateOptionsField: function(optionsField) {
+						var instance = this;
+
+						var editMode = instance.get('editMode');
+
+						if (editMode) {
+							optionsField.set('editable', false);
+						}
+					},
+
+					_updateOptionsFields: function() {
+						var instance = this;
+
+						instance.eachField(
+							function(field) {
+								var type = field.get('type');
+
+								if (type === 'options') {
+									instance._updateOptionsField(field);
+								}
+							}
+						);
+					},
+
+					_updateTypeField: function() {
+						var instance = this;
+
+						var typeField = instance.getField('type');
+
+						typeField.set('value', instance._getFormBuilderFieldType());
+					},
+
 					_valueContainer: function() {
 						var instance = this;
 
@@ -343,6 +454,6 @@ AUI.add(
 	},
 	'',
 	{
-		requires: ['liferay-ddl-soy-template-util', 'liferay-ddm-form-renderer', 'liferay-ddm-form-renderer-util', 'liferay-form']
+		requires: ['liferay-ddm-form-renderer', 'liferay-ddm-form-renderer-util', 'liferay-ddm-soy-template-util', 'liferay-form']
 	}
 );

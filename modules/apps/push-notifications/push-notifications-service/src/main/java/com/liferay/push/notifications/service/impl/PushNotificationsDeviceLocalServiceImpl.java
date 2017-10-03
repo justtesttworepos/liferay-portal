@@ -14,8 +14,6 @@
 
 package com.liferay.push.notifications.service.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -42,7 +40,6 @@ import org.osgi.framework.FrameworkUtil;
  * @author Silvio Santos
  * @author Bruno Farache
  */
-@ProviderType
 public class PushNotificationsDeviceLocalServiceImpl
 	extends PushNotificationsDeviceLocalServiceBaseImpl {
 
@@ -51,7 +48,7 @@ public class PushNotificationsDeviceLocalServiceImpl
 			long userId, String platform, String token)
 		throws PortalException {
 
-		User user = userPersistence.findByPrimaryKey(userId);
+		User user = userLocalService.getUser(userId);
 
 		long pushNotificationsDeviceId = counterLocalService.increment();
 
