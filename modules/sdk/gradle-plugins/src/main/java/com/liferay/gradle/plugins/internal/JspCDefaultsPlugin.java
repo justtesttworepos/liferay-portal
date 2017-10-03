@@ -19,12 +19,15 @@ import com.liferay.gradle.plugins.internal.util.FileUtil;
 import com.liferay.gradle.plugins.internal.util.GradleUtil;
 import com.liferay.gradle.plugins.jasper.jspc.CompileJSPTask;
 import com.liferay.gradle.plugins.jasper.jspc.JspCPlugin;
+import com.liferay.gradle.plugins.util.PortalTools;
+import com.liferay.gradle.util.Validator;
 
 import java.io.File;
 
 import java.util.concurrent.Callable;
 
 import org.gradle.api.Action;
+import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -37,11 +40,13 @@ import org.gradle.api.tasks.bundling.Jar;
 public class JspCDefaultsPlugin
 	extends BasePortalToolDefaultsPlugin<JspCPlugin> {
 
+	public static final Plugin<Project> INSTANCE = new JspCDefaultsPlugin();
+
 	public static final String UNZIP_JAR_TASK_NAME = "unzipJar";
 
 	protected void addDependenciesJspC(Project project) {
 		ConfigurableFileCollection configurableFileCollection = project.files(
-			getUnzippedJarDir(project));
+			_getUnzippedJarDir(project));
 
 		configurableFileCollection.builtBy(UNZIP_JAR_TASK_NAME);
 
@@ -58,38 +63,27 @@ public class JspCDefaultsPlugin
 			"1.9.4");
 	}
 
-	protected Task addTaskUnzipJar(final Project project) {
-		Task task = project.task(UNZIP_JAR_TASK_NAME);
+	@Override
+	protected void addPortalToolDependencies(
+		Project project, String configurationName, String portalToolName) {
 
-		final Jar jar = (Jar)GradleUtil.getTask(
-			project, JavaPlugin.JAR_TASK_NAME);
+		String portalToolVersion = PortalTools.getVersion(
+			project, portalToolName);
 
-		task.dependsOn(jar);
-
-		task.doLast(
-			new Action<Task>() {
-
-				@Override
-				public void execute(Task task) {
-					Project project = task.getProject();
-
-					FileUtil.unzip(
-						project, jar.getArchivePath(),
-						getUnzippedJarDir(project));
-				}
-
-			});
-
-		return task;
+		if (Validator.isNotNull(portalToolVersion)) {
+			GradleUtil.addDependency(
+				project, configurationName, PortalTools.GROUP, portalToolName,
+				portalToolVersion);
+		}
 	}
 
 	@Override
 	protected void configureDefaults(Project project, JspCPlugin jspCPlugin) {
 		super.configureDefaults(project, jspCPlugin);
 
-		addTaskUnzipJar(project);
+		_addTaskUnzipJar(project);
 
-		configureTaskGenerateJSPJava(project);
+		_configureTaskGenerateJSPJava(project);
 
 		project.afterEvaluate(
 			new Action<Project>() {
@@ -97,30 +91,6 @@ public class JspCDefaultsPlugin
 				@Override
 				public void execute(Project project) {
 					addDependenciesJspC(project);
-				}
-
-			});
-	}
-
-	protected void configureTaskGenerateJSPJava(final Project project) {
-		CompileJSPTask compileJSPTask = (CompileJSPTask)GradleUtil.getTask(
-			project, JspCPlugin.GENERATE_JSP_JAVA_TASK_NAME);
-
-		compileJSPTask.setWebAppDir(
-			new Callable<File>() {
-
-				@Override
-				public File call() throws Exception {
-					File unzippedJarDir = getUnzippedJarDir(project);
-
-					File resourcesDir = new File(
-						unzippedJarDir, "META-INF/resources");
-
-					if (resourcesDir.exists()) {
-						return resourcesDir;
-					}
-
-					return unzippedJarDir;
 				}
 
 			});
@@ -141,7 +111,59 @@ public class JspCDefaultsPlugin
 		return _PORTAL_TOOL_NAME;
 	}
 
-	protected File getUnzippedJarDir(Project project) {
+	private JspCDefaultsPlugin() {
+	}
+
+	private Task _addTaskUnzipJar(final Project project) {
+		Task task = project.task(UNZIP_JAR_TASK_NAME);
+
+		final Jar jar = (Jar)GradleUtil.getTask(
+			project, JavaPlugin.JAR_TASK_NAME);
+
+		task.dependsOn(jar);
+
+		task.doLast(
+			new Action<Task>() {
+
+				@Override
+				public void execute(Task task) {
+					Project project = task.getProject();
+
+					FileUtil.unzip(
+						project, jar.getArchivePath(),
+						_getUnzippedJarDir(project));
+				}
+
+			});
+
+		return task;
+	}
+
+	private void _configureTaskGenerateJSPJava(final Project project) {
+		CompileJSPTask compileJSPTask = (CompileJSPTask)GradleUtil.getTask(
+			project, JspCPlugin.GENERATE_JSP_JAVA_TASK_NAME);
+
+		compileJSPTask.setWebAppDir(
+			new Callable<File>() {
+
+				@Override
+				public File call() throws Exception {
+					File unzippedJarDir = _getUnzippedJarDir(project);
+
+					File resourcesDir = new File(
+						unzippedJarDir, "META-INF/resources");
+
+					if (resourcesDir.exists()) {
+						return resourcesDir;
+					}
+
+					return unzippedJarDir;
+				}
+
+			});
+	}
+
+	private File _getUnzippedJarDir(Project project) {
 		return new File(project.getBuildDir(), "unzipped-jar");
 	}
 

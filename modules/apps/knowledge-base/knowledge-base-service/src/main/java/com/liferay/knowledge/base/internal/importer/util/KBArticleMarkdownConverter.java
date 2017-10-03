@@ -145,7 +145,7 @@ public class KBArticleMarkdownConverter {
 				sb.append(text);
 			}
 
-			int pos = _html.indexOf("/>", curIndex);
+			int pos = _html.indexOf(">", curIndex);
 
 			if (pos < 0) {
 				if (_log.isDebugEnabled()) {
@@ -188,7 +188,8 @@ public class KBArticleMarkdownConverter {
 					if (_log.isWarnEnabled()) {
 						_log.warn(
 							"Unable to obtain image URL from file entry " +
-								imageFileEntry.getFileEntryId());
+								imageFileEntry.getFileEntryId(),
+							pe);
 					}
 				}
 

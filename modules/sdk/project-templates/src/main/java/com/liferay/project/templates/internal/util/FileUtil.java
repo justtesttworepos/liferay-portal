@@ -22,6 +22,7 @@ import java.io.InputStream;
 
 import java.net.URL;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -29,12 +30,15 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFilePermission;
 
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.Properties;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -43,11 +47,61 @@ import java.util.jar.JarFile;
  */
 public class FileUtil {
 
+	public static void deleteDir(Path dirPath) throws IOException {
+		Files.walkFileTree(
+			dirPath,
+			new SimpleFileVisitor<Path>() {
+
+				@Override
+				public FileVisitResult postVisitDirectory(
+						Path dirPath, IOException ioe)
+					throws IOException {
+
+					Files.delete(dirPath);
+
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFile(
+						Path path, BasicFileAttributes basicFileAttributes)
+					throws IOException {
+
+					Files.delete(path);
+
+					return FileVisitResult.CONTINUE;
+				}
+
+			});
+	}
+
+	public static void deleteFiles(Path dirPath, final String... fileNames)
+		throws IOException {
+
+		Files.walkFileTree(
+			dirPath,
+			new SimpleFileVisitor<Path>() {
+
+				@Override
+				public FileVisitResult preVisitDirectory(
+						Path dirPath, BasicFileAttributes basicFileAttributes)
+					throws IOException {
+
+					for (String fileName : fileNames) {
+						Files.deleteIfExists(dirPath.resolve(fileName));
+					}
+
+					return FileVisitResult.CONTINUE;
+				}
+
+			});
+	}
+
 	public static void extractDirectory(
 			String dirName, final Path destinationDirPath)
 		throws Exception {
 
-		File file = FileUtil.getJarFile();
+		File file = getJarFile();
 
 		if (file.isDirectory()) {
 			Path jarDirPath = file.toPath();
@@ -139,6 +193,48 @@ public class FileUtil {
 		URL url = codeSource.getLocation();
 
 		return new File(url.toURI());
+	}
+
+	public static Path getRootDir(Path dirPath, String markerFileName) {
+		while (true) {
+			if (Files.exists(dirPath.resolve(markerFileName))) {
+				return dirPath;
+			}
+
+			dirPath = dirPath.getParent();
+
+			if (dirPath == null) {
+				return null;
+			}
+		}
+	}
+
+	public static String read(Path path) throws IOException {
+		String content = new String(
+			Files.readAllBytes(path), StandardCharsets.UTF_8);
+
+		return content.replace("\r\n", "\n");
+	}
+
+	public static Properties readProperties(Path path) throws IOException {
+		Properties properties = new Properties();
+
+		try (InputStream inputStream = Files.newInputStream(path)) {
+			properties.load(inputStream);
+		}
+
+		return properties;
+	}
+
+	public static void setPosixFilePermissions(
+			Path path, Set<PosixFilePermission> posixFilePermissions)
+		throws IOException {
+
+		try {
+			Files.setPosixFilePermissions(path, posixFilePermissions);
+		}
+		catch (UnsupportedOperationException uoe) {
+		}
 	}
 
 }

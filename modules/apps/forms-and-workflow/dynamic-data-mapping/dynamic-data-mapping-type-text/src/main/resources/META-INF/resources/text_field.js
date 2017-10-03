@@ -18,9 +18,18 @@ AUI.add(
 		var TextField = A.Component.create(
 			{
 				ATTRS: {
+					autocompleteEnabled: {
+						state: true,
+						value: false
+					},
+
 					displayStyle: {
 						state: true,
 						value: 'singleline'
+					},
+
+					initialHeight: {
+						value: 0
 					},
 
 					options: {
@@ -46,21 +55,19 @@ AUI.add(
 						var instance = this;
 
 						instance._eventHandlers.push(
-							instance.after('optionsChange', instance._afterOptionsChange)
+							instance.after('optionsChange', instance._afterOptionsChange),
+							instance.after('valueChange', instance._onTextFieldValueChange)
 						);
-
-						instance.bindInputEvent('focus', instance._onFocusInput);
 					},
 
-					bindInputEvent: function(eventName, callback, volatile) {
-						var instance = this;
+					evaluate: A.debounce(
+						function() {
+							var instance = this;
 
-						if (eventName === instance.getChangeEventName()) {
-							callback = A.debounce(callback, 300, instance);
-						}
-
-						return TextField.superclass.bindInputEvent.apply(instance, [eventName, callback, volatile]);
-					},
+							TextField.superclass.evaluate.apply(instance, arguments);
+						},
+						300
+					),
 
 					getAutoComplete: function() {
 						var instance = this;
@@ -73,21 +80,8 @@ AUI.add(
 							autoComplete.set('inputNode', inputNode);
 						}
 						else {
-							autoComplete = new A.AutoComplete(
-								{
-									after: {
-										select: A.bind(instance.evaluate, instance)
-									},
-									inputNode: inputNode,
-									maxResults: 10,
-									render: true,
-									resultFilters: ['charMatch', 'subWordMatch'],
-									resultHighlighter: 'subWordMatch',
-									resultTextLocator: 'label'
-								}
-							);
-
-							instance._autoComplete = autoComplete;
+							instance._createAutocomplete();
+							autoComplete = instance._autoComplete;
 						}
 
 						return autoComplete;
@@ -102,12 +96,15 @@ AUI.add(
 
 						TextField.superclass.render.apply(instance, arguments);
 
-						var options = instance.get('options');
+						var autocompleteEnabled = instance.get('autocompleteEnabled');
 
-						if (options.length) {
-							var autoComplete = instance.getAutoComplete();
+						if (autocompleteEnabled && instance.get('visible')) {
+							instance._createAutocomplete();
+						}
 
-							autoComplete.set('source', instance.get('options'));
+						if (instance.get('displayStyle') === 'multiline') {
+							instance._setInitialHeight();
+							instance.syncInputHeight();
 						}
 
 						return instance;
@@ -125,38 +122,86 @@ AUI.add(
 						inputGroup.insert(container.one('.help-block'), 'after');
 					},
 
-					_afterOptionsChange: function(event) {
+					syncInputHeight: function() {
 						var instance = this;
 
-						var autoComplete = instance.getAutoComplete();
+						var inputNode = instance.getInputNode();
 
-						if (!Util.compare(event.newVal, event.prevVal)) {
-							autoComplete.set('source', event.newVal);
+						var initialHeight = instance.get('initialHeight');
 
-							autoComplete.fire(
-								'query',
-								{
-									inputValue: instance.getValue(),
-									query: instance.getValue(),
-									src: A.AutoCompleteBase.UI_SRC
-								}
-							);
+						inputNode.setStyle('height', initialHeight);
+
+						var height = inputNode.get('scrollHeight');
+
+						if (height > initialHeight) {
+							inputNode.setStyle('height', height);
 						}
 					},
 
-					_onFocusInput: function() {
+					_afterOptionsChange: function(event) {
+						var instance = this;
+
+						if (instance.get('autocompleteEnabled')) {
+							var autoComplete = instance.getAutoComplete();
+
+							if (!Util.compare(event.newVal, event.prevVal)) {
+								autoComplete.set('source', event.newVal);
+
+								autoComplete.fire(
+									'query',
+									{
+										inputValue: instance.getValue(),
+										query: instance.getValue(),
+										src: A.AutoCompleteBase.UI_SRC
+									}
+								);
+							}
+						}
+					},
+
+					_createAutocomplete: function() {
+						var instance = this;
+
+						var inputNode = instance.getInputNode();
+
+						if (instance._autoComplete) {
+							instance._autoComplete.destroy();
+						}
+
+						instance._autoComplete = new A.AutoComplete(
+							{
+								after: {
+									select: A.bind(instance.evaluate, instance)
+								},
+								inputNode: inputNode,
+								maxResults: 10,
+								render: true,
+								resultFilters: ['charMatch', 'subWordMatch'],
+								resultHighlighter: 'subWordMatch',
+								resultTextLocator: 'label',
+								source: instance.get('options')
+							}
+						);
+					},
+
+					_onTextFieldValueChange: function() {
 						var instance = this;
 
 						if (instance.get('displayStyle') === 'multiline') {
-							var textAreaNode = instance.getInputNode();
-
-							if (!textAreaNode.autosize) {
-								textAreaNode.plug(A.Plugin.Autosize);
-								textAreaNode.height(textAreaNode.get('scrollHeight'));
-							}
-
-							textAreaNode.autosize._uiAutoSize();
+							instance.syncInputHeight();
 						}
+					},
+
+					_setInitialHeight: function() {
+						var instance = this;
+
+						var inputNode = instance.getInputNode();
+
+						var initialHeightInPx = inputNode.getStyle('height');
+
+						var initialHeight = parseInt(initialHeightInPx, 10);
+
+						instance.set('initialHeight', initialHeight);
 					}
 				}
 			}

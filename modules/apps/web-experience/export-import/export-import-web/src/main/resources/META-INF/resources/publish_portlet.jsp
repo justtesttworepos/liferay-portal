@@ -251,6 +251,7 @@ portletURL.setParameter("tabs3", "current-and-previous");
 
 																<div class="flex-item-center range-options">
 																	<liferay-ui:icon icon="reload" markupView="lexicon" />
+
 																	<aui:a cssClass="modify-link" href="javascript:;" id="rangeLink" method="get">
 																		<liferay-ui:message key="refresh-counts" />
 																	</aui:a>
@@ -498,7 +499,7 @@ portletURL.setParameter("tabs3", "current-and-previous");
 				</c:when>
 			</c:choose>
 
-			<aui:script use="liferay-export-import">
+			<aui:script use="liferay-export-import-export-import">
 				<liferay-portlet:resourceURL copyCurrentRenderParameters="<%= false %>" id="publishPortlet" var="publishProcessesURL">
 					<portlet:param name="<%= Constants.CMD %>" value="<%= Constants.PUBLISH %>" />
 					<portlet:param name="<%= SearchContainer.DEFAULT_CUR_PARAM %>" value="<%= ParamUtil.getString(request, SearchContainer.DEFAULT_CUR_PARAM) %>" />

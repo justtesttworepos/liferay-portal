@@ -20,7 +20,6 @@ import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.image.ImageBag;
 import com.liferay.portal.kernel.image.ImageToolUtil;
-import com.liferay.portal.kernel.io.FileFilter;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.MessageBusUtil;
@@ -50,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.function.Predicate;
 
 /**
  * @author Alexander Chow
@@ -57,11 +57,13 @@ import java.util.concurrent.Future;
  */
 public abstract class DLPreviewableProcessor implements DLProcessor {
 
+	public static final String DECRYPT_PATH = "document_decrypt/";
+
+	public static final String DECRYPT_TMP_PATH;
+
 	public static final String PREVIEW_PATH = "document_preview/";
 
-	public static final String PREVIEW_TMP_PATH =
-		SystemProperties.get(SystemProperties.TMP_DIR) + "/liferay/" +
-			PREVIEW_PATH;
+	public static final String PREVIEW_TMP_PATH;
 
 	public static final long REPOSITORY_ID = CompanyConstants.SYSTEM;
 
@@ -73,9 +75,17 @@ public abstract class DLPreviewableProcessor implements DLProcessor {
 
 	public static final String THUMBNAIL_PATH = "document_thumbnail/";
 
-	public static final String THUMBNAIL_TMP_PATH =
-		SystemProperties.get(SystemProperties.TMP_DIR) + "/liferay/" +
-			THUMBNAIL_PATH;
+	public static final String THUMBNAIL_TMP_PATH;
+
+	public static final String TMP_PATH;
+
+	static {
+		TMP_PATH = SystemProperties.get(SystemProperties.TMP_DIR) + "/liferay/";
+
+		DECRYPT_TMP_PATH = TMP_PATH.concat(DECRYPT_PATH);
+		PREVIEW_TMP_PATH = TMP_PATH.concat(PREVIEW_PATH);
+		THUMBNAIL_TMP_PATH = TMP_PATH.concat(THUMBNAIL_PATH);
+	}
 
 	public static void deleteFiles() {
 		long[] companyIds = PortalUtil.getCompanyIds();
@@ -325,6 +335,8 @@ public abstract class DLPreviewableProcessor implements DLProcessor {
 
 			DLStoreUtil.deleteDirectory(
 				companyId, REPOSITORY_ID, thumbnailFilePath);
+
+			DLStoreUtil.deleteFile(companyId, REPOSITORY_ID, thumbnailFilePath);
 		}
 		catch (Exception e) {
 		}
@@ -643,6 +655,10 @@ public abstract class DLPreviewableProcessor implements DLProcessor {
 		return sb.toString();
 	}
 
+	protected File getDecryptedTempFile(String id) {
+		return new File(DECRYPT_TMP_PATH + id);
+	}
+
 	protected abstract List<Long> getFileVersionIds();
 
 	protected String getPreviewFilePath(FileVersion fileVersion) {
@@ -727,20 +743,31 @@ public abstract class DLPreviewableProcessor implements DLProcessor {
 		String tempFileId = DLUtil.getTempFileId(
 			fileVersion.getFileEntryId(), fileVersion.getVersion());
 
-		StringBundler sb = new StringBundler(5);
+		String prefix = tempFileId + StringPool.DASH;
 
-		sb.append(tempFileId);
-		sb.append(StringPool.DASH);
-		sb.append("(.*)");
+		Predicate<File> filePredicate = File::isFile;
+
+		filePredicate = filePredicate.and(
+			file -> {
+				String fileName = file.getName();
+
+				return fileName.startsWith(prefix);
+			});
 
 		if (Validator.isNotNull(type)) {
-			sb.append(StringPool.PERIOD);
-			sb.append(type);
+			String suffix = StringPool.PERIOD + type;
+
+			filePredicate = filePredicate.and(
+				file -> {
+					String fileName = file.getName();
+
+					return fileName.endsWith(suffix);
+				});
 		}
 
 		File dir = new File(PREVIEW_TMP_PATH);
 
-		File[] files = dir.listFiles(new FileFilter(sb.toString()));
+		File[] files = dir.listFiles(filePredicate::test);
 
 		if (_log.isDebugEnabled()) {
 			for (File file : files) {

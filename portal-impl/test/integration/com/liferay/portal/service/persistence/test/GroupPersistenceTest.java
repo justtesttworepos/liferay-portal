@@ -27,7 +27,6 @@ import com.liferay.portal.kernel.service.persistence.GroupPersistence;
 import com.liferay.portal.kernel.service.persistence.GroupUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
@@ -36,6 +35,7 @@ import com.liferay.portal.kernel.util.OrderByComparatorFactoryUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
+import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -347,6 +347,18 @@ public class GroupPersistenceTest {
 		_persistence.countByC_L_GK(0L, 0L, StringPool.NULL);
 
 		_persistence.countByC_L_GK(0L, 0L, (String)null);
+	}
+
+	@Test
+	public void testCountByC_T_S() throws Exception {
+		_persistence.countByC_T_S(RandomTestUtil.nextLong(), StringPool.BLANK,
+			RandomTestUtil.randomBoolean());
+
+		_persistence.countByC_T_S(0L, StringPool.NULL,
+			RandomTestUtil.randomBoolean());
+
+		_persistence.countByC_T_S(0L, (String)null,
+			RandomTestUtil.randomBoolean());
 	}
 
 	@Test

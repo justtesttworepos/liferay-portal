@@ -14,10 +14,11 @@
 
 package com.liferay.blogs.web.internal.portlet.action;
 
-import com.liferay.blogs.kernel.exception.NoSuchEntryException;
-import com.liferay.blogs.kernel.exception.TrackbackValidationException;
-import com.liferay.blogs.kernel.model.BlogsEntry;
+import com.liferay.blogs.exception.NoSuchEntryException;
+import com.liferay.blogs.exception.TrackbackValidationException;
+import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.web.constants.BlogsPortletKeys;
+import com.liferay.blogs.web.internal.trackback.Trackback;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
@@ -29,15 +30,13 @@ import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
+import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.ParamUtil;
-import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portlet.blogs.trackback.Trackback;
-import com.liferay.portlet.blogs.trackback.TrackbackImpl;
 
 import javax.portlet.ActionRequest;
 import javax.portlet.ActionResponse;
@@ -47,6 +46,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Alexander Chow
@@ -64,14 +64,6 @@ import org.osgi.service.component.annotations.Component;
 )
 public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 
-	public TrackbackMVCActionCommand() {
-		_trackback = new TrackbackImpl();
-	}
-
-	public TrackbackMVCActionCommand(Trackback trackback) {
-		_trackback = trackback;
-	}
-
 	public void addTrackback(
 			ActionRequest actionRequest, ActionResponse actionResponse)
 		throws Exception {
@@ -84,11 +76,11 @@ public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 			ThemeDisplay themeDisplay =
 				(ThemeDisplay)actionRequest.getAttribute(WebKeys.THEME_DISPLAY);
 
-			HttpServletRequest request = PortalUtil.getHttpServletRequest(
+			HttpServletRequest request = _portal.getHttpServletRequest(
 				actionRequest);
 
 			HttpServletRequest originalRequest =
-				PortalUtil.getOriginalServletRequest(request);
+				_portal.getOriginalServletRequest(request);
 
 			String excerpt = ParamUtil.getString(originalRequest, "excerpt");
 			String url = ParamUtil.getString(originalRequest, "url");
@@ -132,7 +124,7 @@ public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 		throws Exception {
 
 		try {
-			ActionUtil.getEntry(actionRequest);
+			return ActionUtil.getEntry(actionRequest);
 		}
 		catch (PrincipalException pe) {
 			throw new TrackbackValidationException(
@@ -140,8 +132,6 @@ public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 					"trackbacks",
 				pe);
 		}
-
-		return (BlogsEntry)actionRequest.getAttribute(WebKeys.BLOGS_ENTRY);
 	}
 
 	protected boolean isCommentsEnabled(ActionRequest actionRequest)
@@ -189,9 +179,9 @@ public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 
 		sb.append("</response>");
 
-		HttpServletRequest request = PortalUtil.getHttpServletRequest(
+		HttpServletRequest request = _portal.getHttpServletRequest(
 			actionRequest);
-		HttpServletResponse response = PortalUtil.getHttpServletResponse(
+		HttpServletResponse response = _portal.getHttpServletResponse(
 			actionResponse);
 
 		ServletResponseUtil.sendFile(
@@ -219,7 +209,7 @@ public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 				"Trackback requires a valid permanent URL");
 		}
 
-		String trackbackIP = HttpUtil.getIpAddress(url);
+		String trackbackIP = _http.getIpAddress(url);
 
 		if (!remoteIP.equals(trackbackIP)) {
 			throw new TrackbackValidationException(
@@ -239,6 +229,13 @@ public class TrackbackMVCActionCommand extends BaseMVCActionCommand {
 	private static final Log _log = LogFactoryUtil.getLog(
 		TrackbackMVCActionCommand.class);
 
-	private final Trackback _trackback;
+	@Reference
+	private Http _http;
+
+	@Reference
+	private Portal _portal;
+
+	@Reference
+	private Trackback _trackback;
 
 }

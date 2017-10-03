@@ -30,12 +30,14 @@ import com.liferay.portal.kernel.jndi.JNDIUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.pacl.DoPrivileged;
+import com.liferay.portal.kernel.util.CharPool;
 import com.liferay.portal.kernel.util.ClassLoaderUtil;
 import com.liferay.portal.kernel.util.PropertiesUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.ServerDetector;
 import com.liferay.portal.kernel.util.SortedProperties;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.spring.hibernate.DialectDetector;
 import com.liferay.portal.util.JarUtil;
@@ -49,8 +51,14 @@ import com.liferay.registry.ServiceTrackerCustomizer;
 
 import com.mchange.v2.c3p0.ComboPooledDataSource;
 
+import java.io.Closeable;
+
 import java.net.URL;
 import java.net.URLClassLoader;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 
 import java.util.Enumeration;
 import java.util.Map;
@@ -103,6 +111,16 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 
 			tomcatDataSource.close();
 		}
+		else if (dataSource instanceof BasicDataSource) {
+			BasicDataSource basicDataSource = (BasicDataSource)dataSource;
+
+			basicDataSource.close();
+		}
+		else if (dataSource instanceof Closeable) {
+			Closeable closeable = (Closeable)dataSource;
+
+			closeable.close();
+		}
 	}
 
 	@Override
@@ -113,6 +131,10 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 		PropertiesUtil.merge(defaultProperties, properties);
 
 		properties = defaultProperties;
+
+		testDatabaseClass(properties);
+
+		_waitForJDBCConnection(properties);
 
 		String jndiName = properties.getProperty("jndi.name");
 
@@ -138,8 +160,6 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 
 			_log.debug(PropertiesUtil.toString(sortedProperties));
 		}
-
-		testDatabaseClass(properties);
 
 		DataSource dataSource = null;
 
@@ -225,6 +245,18 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 		String identityToken = StringUtil.randomString();
 
 		comboPooledDataSource.setIdentityToken(identityToken);
+
+		String connectionPropertiesString = (String)properties.remove(
+			"connectionProperties");
+
+		if (connectionPropertiesString != null) {
+			Properties connectionProperties = PropertiesUtil.load(
+				StringUtil.replace(
+					connectionPropertiesString, CharPool.SEMICOLON,
+					CharPool.NEW_LINE));
+
+			comboPooledDataSource.setProperties(connectionProperties);
+		}
 
 		Enumeration<String> enu =
 			(Enumeration<String>)properties.propertyNames();
@@ -314,6 +346,19 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 			_HIKARICP_DATASOURCE_CLASS_NAME);
 
 		Object hikariDataSource = hikariDataSourceClazz.newInstance();
+
+		String connectionPropertiesString = (String)properties.remove(
+			"connectionProperties");
+
+		if (connectionPropertiesString != null) {
+			Properties connectionProperties = PropertiesUtil.load(
+				StringUtil.replace(
+					connectionPropertiesString, CharPool.SEMICOLON,
+					CharPool.NEW_LINE));
+
+			BeanUtil.setProperty(
+				hikariDataSource, "dataSourceProperties", connectionProperties);
+		}
 
 		for (Map.Entry<Object, Object> entry : properties.entrySet()) {
 			String key = (String)entry.getKey();
@@ -492,10 +537,14 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 
 	protected boolean isPropertyTomcat(String key) {
 		if (StringUtil.equalsIgnoreCase(key, "fairQueue") ||
+			StringUtil.equalsIgnoreCase(key, "initialSize") ||
 			StringUtil.equalsIgnoreCase(key, "jdbcInterceptors") ||
 			StringUtil.equalsIgnoreCase(key, "jmxEnabled") ||
+			StringUtil.equalsIgnoreCase(key, "maxIdle") ||
+			StringUtil.equalsIgnoreCase(key, "testWhileIdle") ||
 			StringUtil.equalsIgnoreCase(key, "timeBetweenEvictionRunsMillis") ||
-			StringUtil.equalsIgnoreCase(key, "useEquals")) {
+			StringUtil.equalsIgnoreCase(key, "useEquals") ||
+			StringUtil.equalsIgnoreCase(key, "validationQuery")) {
 
 			return true;
 		}
@@ -583,6 +632,69 @@ public class DataSourceFactoryImpl implements DataSourceFactory {
 			JarUtil.downloadAndInstallJar(
 				new URL(url), PropsValues.LIFERAY_LIB_PORTAL_DIR, name,
 				(URLClassLoader)classLoader);
+		}
+	}
+
+	private void _waitForJDBCConnection(Properties properties) {
+		int maxRetries = PropsValues.RETRY_JDBC_ON_STARTUP_MAX_RETRIES;
+
+		if (maxRetries <= 0) {
+			return;
+		}
+
+		int delay = PropsValues.RETRY_JDBC_ON_STARTUP_DELAY;
+
+		if (delay < 0) {
+			delay = 0;
+		}
+
+		String url = properties.getProperty("url");
+		String username = properties.getProperty("username");
+		String password = properties.getProperty("password");
+
+		int count = maxRetries;
+
+		while (count-- > 0) {
+			try (Connection connection = DriverManager.getConnection(
+					url, username, password)) {
+
+				if (connection != null) {
+					if (_log.isInfoEnabled()) {
+						_log.info("Successfully acquired JDBC connection");
+					}
+
+					return;
+				}
+			}
+			catch (SQLException sqle) {
+				if (_log.isDebugEnabled()) {
+					_log.error("Unable to acquire JDBC connection", sqle);
+				}
+			}
+
+			if (_log.isWarnEnabled()) {
+				_log.warn(
+					"At attempt " + (maxRetries - count) + " of " + maxRetries +
+						" in acquiring a JDBC connection after a " + delay +
+							" second " + delay);
+			}
+
+			try {
+				Thread.sleep(delay * Time.SECOND);
+			}
+			catch (InterruptedException ie) {
+				if (_log.isWarnEnabled()) {
+					_log.warn("Interruptted acquiring a JDBC connection", ie);
+				}
+
+				break;
+			}
+		}
+
+		if (_log.isWarnEnabled()) {
+			_log.warn(
+				"Unable to acquire a direct JDBC connection, proceeding to " +
+					"use a data source instead");
 		}
 	}
 

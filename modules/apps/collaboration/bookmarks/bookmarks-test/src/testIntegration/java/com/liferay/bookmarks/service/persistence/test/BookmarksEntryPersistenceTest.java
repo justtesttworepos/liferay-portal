@@ -30,7 +30,6 @@ import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
@@ -40,6 +39,7 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
+import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -69,7 +69,8 @@ public class BookmarksEntryPersistenceTest {
 	@Rule
 	public static final AggregateTestRule aggregateTestRule = new AggregateTestRule(new LiferayIntegrationTestRule(),
 			PersistenceTestRule.INSTANCE,
-			new TransactionalTestRule(Propagation.REQUIRED));
+			new TransactionalTestRule(Propagation.REQUIRED,
+				"com.liferay.bookmarks.service"));
 
 	@Before
 	public void setUp() {
@@ -138,8 +139,6 @@ public class BookmarksEntryPersistenceTest {
 
 		newBookmarksEntry.setModifiedDate(RandomTestUtil.nextDate());
 
-		newBookmarksEntry.setResourceBlockId(RandomTestUtil.nextLong());
-
 		newBookmarksEntry.setFolderId(RandomTestUtil.nextLong());
 
 		newBookmarksEntry.setTreePath(RandomTestUtil.randomString());
@@ -186,8 +185,6 @@ public class BookmarksEntryPersistenceTest {
 		Assert.assertEquals(Time.getShortTimestamp(
 				existingBookmarksEntry.getModifiedDate()),
 			Time.getShortTimestamp(newBookmarksEntry.getModifiedDate()));
-		Assert.assertEquals(existingBookmarksEntry.getResourceBlockId(),
-			newBookmarksEntry.getResourceBlockId());
 		Assert.assertEquals(existingBookmarksEntry.getFolderId(),
 			newBookmarksEntry.getFolderId());
 		Assert.assertEquals(existingBookmarksEntry.getTreePath(),
@@ -214,13 +211,6 @@ public class BookmarksEntryPersistenceTest {
 		Assert.assertEquals(Time.getShortTimestamp(
 				existingBookmarksEntry.getStatusDate()),
 			Time.getShortTimestamp(newBookmarksEntry.getStatusDate()));
-	}
-
-	@Test
-	public void testCountByResourceBlockId() throws Exception {
-		_persistence.countByResourceBlockId(RandomTestUtil.nextLong());
-
-		_persistence.countByResourceBlockId(0L);
 	}
 
 	@Test
@@ -384,11 +374,10 @@ public class BookmarksEntryPersistenceTest {
 		return OrderByComparatorFactoryUtil.create("BookmarksEntry", "uuid",
 			true, "entryId", true, "groupId", true, "companyId", true,
 			"userId", true, "userName", true, "createDate", true,
-			"modifiedDate", true, "resourceBlockId", true, "folderId", true,
-			"treePath", true, "name", true, "url", true, "description", true,
-			"visits", true, "priority", true, "lastPublishDate", true,
-			"status", true, "statusByUserId", true, "statusByUserName", true,
-			"statusDate", true);
+			"modifiedDate", true, "folderId", true, "treePath", true, "name",
+			true, "url", true, "description", true, "visits", true, "priority",
+			true, "lastPublishDate", true, "status", true, "statusByUserId",
+			true, "statusByUserName", true, "statusDate", true);
 	}
 
 	@Test
@@ -617,8 +606,6 @@ public class BookmarksEntryPersistenceTest {
 		bookmarksEntry.setCreateDate(RandomTestUtil.nextDate());
 
 		bookmarksEntry.setModifiedDate(RandomTestUtil.nextDate());
-
-		bookmarksEntry.setResourceBlockId(RandomTestUtil.nextLong());
 
 		bookmarksEntry.setFolderId(RandomTestUtil.nextLong());
 

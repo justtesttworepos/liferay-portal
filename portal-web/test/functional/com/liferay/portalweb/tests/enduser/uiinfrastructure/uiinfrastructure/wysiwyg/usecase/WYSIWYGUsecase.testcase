@@ -1,5 +1,6 @@
 <definition component-name="portal-user-interface">
 	<property name="portal.release" value="true" />
+	<property name="portal.upstream" value="true" />
 	<property name="testray.main.component.name" value="User Interface" />
 
 	<var name="pageName" value="CKEditor Page" />
@@ -38,12 +39,15 @@
 		</execute>
 
 		<execute macro="Blogs#addEntryWithUploadedCoverImage">
+			<var name="coverImageName" value="Document_1" />
 			<var name="entryContent" value="Blogs Entry Content" />
 			<var name="entrySubtitle" value="Blogs Entry Subtitle" />
 			<var name="entryTitle" value="Blogs Entry Title" />
 			<var name="navTab" value="Upload Image" />
 			<var name="uploadFileName" value="Document_1.jpg" />
 		</execute>
+
+		<execute function="Pause" locator1="1000" />
 
 		<execute macro="BlogsEntry#saveAsDraft" />
 
@@ -72,13 +76,15 @@
 	<command name="AddWebContentArticleWithImageViaURL" priority="4">
 		<execute macro="Navigator#openURL" />
 
-		<execute macro="ProductMenu#gotoSitesContent">
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Content" />
+			<var name="panel" value="Site Administration" />
 			<var name="portlet" value="Web Content" />
 		</execute>
 
 		<execute macro="WebContentNavigator#gotoAddCP" />
 
-		<execute function="Type#mouseOverFocusType" locator1="TextInput#TITLE" value1="Web Content Title" />
+		<execute function="Type" locator1="TextInput#TITLE" value1="Web Content Title" />
 
 		<execute function="Click#pauseClickAt" locator1="AlloyEditor#CONTENT_FIELD" />
 
@@ -99,6 +105,40 @@
 		<execute function="SelectFrame" locator1="IFrame#DIALOG" />
 
 		<execute function="AssertElementPresent" locator1="//img[contains(@src,'Document_1.jpg')]" />
+	</command>
+
+	<command name="RemoveAppliedStylingInAlloyEditor" priority="4">
+		<description message="This is a use case for LPS-61676." />
+
+		<execute macro="Navigator#openURL" />
+
+		<execute macro="ProductMenu#gotoPortlet">
+			<var name="category" value="Content" />
+			<var name="panel" value="Site Administration" />
+			<var name="portlet" value="Web Content" />
+		</execute>
+
+		<execute macro="WebContentNavigator#gotoAddCP" />
+
+		<execute macro="AlloyEditor#addContent">
+			<var name="content" value="This is a sentence" />
+		</execute>
+
+		<execute macro="AlloyEditor#toggleStylingInAlloyEditor">
+			<var name="boldContent" value="This is a sentence" />
+		</execute>
+
+		<execute macro="AlloyEditor#viewStylingInAlloyEditor">
+			<var name="boldContent" value="This is a sentence" />
+		</execute>
+
+		<execute macro="AlloyEditor#toggleStylingInAlloyEditor">
+			<var name="boldContent" value="This is a sentence" />
+		</execute>
+
+		<execute macro="AlloyEditor#viewNoStylingInAlloyEditor">
+			<var name="boldContent" value="This is a sentence" />
+		</execute>
 	</command>
 
 	<command name="ViewWikiFrontPageLeftToRight" priority="4">
@@ -130,6 +170,8 @@
 	</command>
 
 	<command name="ViewWikiFrontPageRightToLeft" priority="4">
+		<property name="test.name.skip.portal.instance" value="WYSIWIGUsecase#ViewWikiFrontPageRightToLeft" />
+
 		<execute macro="Page#add">
 			<var name="pageName" value="${pageName}" />
 		</execute>

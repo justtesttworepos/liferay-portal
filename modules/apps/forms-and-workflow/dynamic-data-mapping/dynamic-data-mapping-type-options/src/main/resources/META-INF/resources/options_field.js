@@ -1,8 +1,6 @@
 AUI.add(
 	'liferay-ddm-form-field-options',
 	function(A) {
-		var AArray = A.Array;
-
 		var Renderer = Liferay.DDM.Renderer;
 
 		var Util = Renderer.Util;
@@ -18,6 +16,18 @@ AUI.add(
 		var OptionsField = A.Component.create(
 			{
 				ATTRS: {
+					allowEmptyOptions: {
+						value: false
+					},
+
+					editable: {
+						value: true
+					},
+
+					sortable: {
+						value: true
+					},
+
 					sortableList: {
 						valueFn: '_valueSortableList'
 					},
@@ -33,7 +43,6 @@ AUI.add(
 					},
 
 					value: {
-						value: []
 					}
 				},
 
@@ -48,7 +57,11 @@ AUI.add(
 						var sortableList = instance.get('sortableList');
 
 						instance._eventHandlers.push(
-							instance.after('*:valueChanged', A.bind('_afterOptionValueChanged', instance)),
+							instance.on('liferay-ddm-form-field-key-value:destroy', instance._onDestroyOption),
+							instance.after('liferay-ddm-form-field-key-value:render', instance._afterRenderOption),
+							instance.after('liferay-ddm-form-field-key-value:blur', instance._afterBlur),
+							instance.after('liferay-ddm-form-field-key-value:valueChange', instance._afterOptionValueChange),
+							instance.after('editableChange', instance._afterEditableChange),
 							sortableList.after('drag:end', A.bind('_afterSortableListDragEnd', instance)),
 							sortableList.after('drag:start', A.bind('_afterSortableListDragStart', instance))
 						);
@@ -70,7 +83,12 @@ AUI.add(
 
 						repeatedOption.addTarget(instance);
 
-						instance.fire('addOption');
+						instance.fire(
+							'addOption',
+							{
+								option: repeatedOption
+							}
+						);
 
 						return repeatedOption;
 					},
@@ -90,9 +108,7 @@ AUI.add(
 					eachOption: function(fn) {
 						var instance = this;
 
-						var mainOption = instance._mainOption;
-
-						mainOption.getRepeatedSiblings().forEach(fn, instance);
+						instance.getOptions().forEach(fn, instance);
 					},
 
 					empty: function() {
@@ -100,7 +116,7 @@ AUI.add(
 
 						var mainOption = instance._mainOption;
 
-						var options = mainOption.getRepeatedSiblings();
+						var options = instance.getOptions();
 
 						while (options.length > 1) {
 							var option = options[options.length - 1];
@@ -116,9 +132,29 @@ AUI.add(
 					getLastOption: function() {
 						var instance = this;
 
-						var repetitions = instance._mainOption.getRepeatedSiblings();
+						var options = instance.getOptions();
 
-						return repetitions[repetitions.length - 1];
+						return instance.getOption(options.length - 1);
+					},
+
+					getMainOption: function() {
+						var instance = this;
+
+						return instance._mainOption;
+					},
+
+					getOption: function(index) {
+						var instance = this;
+
+						var options = instance.getOptions();
+
+						return options[index];
+					},
+
+					getOptions: function() {
+						var instance = this;
+
+						return instance._mainOption.getRepeatedSiblings();
 					},
 
 					getValue: function() {
@@ -133,7 +169,7 @@ AUI.add(
 								if (key) {
 									values.push(
 										{
-											label: item.getValue(),
+											label: item.get('value'),
 											value: key
 										}
 									);
@@ -172,14 +208,16 @@ AUI.add(
 						);
 					},
 
-					moveOption: function(option, oldIndex, newIndex) {
+					moveOption: function(oldIndex, newIndex) {
 						var instance = this;
 
-						var repetitions = option.getRepeatedSiblings();
+						var value = instance.getValue();
 
-						repetitions.splice(newIndex, 0, repetitions.splice(oldIndex, 1)[0]);
+						value.splice(newIndex, 0, value.splice(oldIndex, 1)[0]);
 
-						repetitions.forEach(A.bind('_syncRepeatableField', option));
+						instance._setValue(value);
+
+						instance._renderOptions();
 					},
 
 					processEvaluationContext: function(context) {
@@ -188,11 +226,36 @@ AUI.add(
 						var value = instance.getValue();
 
 						if (value.length === 0 && instance.get('required')) {
-							context.valid = false;
 							context.errorMessage = Liferay.Language.get('please-add-at-least-one-option');
+							context.valid = false;
 						}
 
 						return context;
+					},
+
+					removeOption: function(option) {
+						var instance = this;
+
+						var options = instance.getOptions();
+
+						var index = options.indexOf(option);
+
+						var value = instance.getValue();
+
+						value.splice(index, 1);
+
+						instance._setValue(value);
+
+						instance.fire('removeOption');
+
+						instance.render();
+
+						if (index > 0 && value.length > 0) {
+							options[index - 1].focus();
+						}
+						else {
+							instance.getLastOption().focus();
+						}
 					},
 
 					render: function() {
@@ -200,7 +263,7 @@ AUI.add(
 
 						OptionsField.superclass.render.apply(instance, arguments);
 
-						instance._renderOptions(instance.get('value'));
+						instance._renderOptions();
 
 						return instance;
 					},
@@ -210,7 +273,8 @@ AUI.add(
 
 						if (!Util.compare(value, instance.get('value'))) {
 							instance.set('value', value);
-							instance._renderOptions(value);
+
+							instance._renderOptions();
 						}
 					},
 
@@ -234,6 +298,33 @@ AUI.add(
 						);
 					},
 
+					_afterBlur: function(event) {
+						var instance = this;
+
+						var value = instance.getValue();
+
+						if (value.length === 0 || value.length === 1 && value[0].label === '') {
+							value = [];
+						}
+
+						instance._setValue(value);
+					},
+
+					_afterEditableChange: function(event) {
+						var instance = this;
+
+						var options = instance.getOptions();
+
+						var editable = event.newVal;
+
+						options.forEach(
+							function(option) {
+								option.set('keyInputEnabled', editable);
+								option.set('generationLocked', !editable);
+							}
+						);
+					},
+
 					_afterErrorMessageChange: function(event) {
 						var instance = this;
 
@@ -242,14 +333,62 @@ AUI.add(
 						mainOption.set('errorMessage', event.newVal);
 					},
 
-					_afterOptionValueChanged: function() {
+					_afterOptionNormalizeKey: function(key, option) {
 						var instance = this;
 
-						instance.evaluate();
+						var name = A.Do.originalRetVal;
+
+						if (name) {
+							var valueInItem = function(value, item) {
+								return item.value === value && item.value !== option.get('key');
+							};
+
+							var optionsValues = instance.getValue();
+
+							var hasOptionWithName = function() {
+								return optionsValues.filter(A.bind(valueInItem, null, name)).length > 0;
+							};
+
+							var counter = 0;
+
+							do {
+								if (counter > 0) {
+									name = A.Do.originalRetVal + counter;
+								}
+
+								counter++;
+							}
+							while (hasOptionWithName());
+						}
+
+						return new A.Do.AlterReturn(null, name);
 					},
 
-					_afterRender: function(option) {
+					_afterOptionValueChange: function(event) {
 						var instance = this;
+
+						if (instance._skipOptionValueChange) {
+							return;
+						}
+
+						if (event.target === instance.getLastOption()) {
+							instance.addOption();
+						}
+
+						var value = instance.getValue();
+
+						if (value.length > 0 && instance.get('required')) {
+							instance.set('errorMessage', '');
+							instance.set('valid', true);
+						}
+
+						instance._setValue(value);
+					},
+
+					_afterRenderOption: function(event) {
+						var instance = this;
+
+						var option = event.target;
 
 						instance._bindListEvents();
 						instance._renderOptionUI(option);
@@ -258,25 +397,16 @@ AUI.add(
 					_afterSortableListDragEnd: function(event) {
 						var instance = this;
 
-						var dragNode = event.target.get('node');
-
-						var dragEndIndex = instance._getNodeIndex(dragNode);
+						var dragEndIndex = instance._getNodeIndex(event.target.get('node'));
 
 						var dragStartIndex = instance._dragStartIndex;
 
 						if (dragEndIndex !== dragStartIndex) {
-							var mainOption = instance._mainOption;
 
-							var option = AArray.find(
-								mainOption.getRepeatedSiblings(),
-								function(item) {
-									return item.get('container') === dragNode;
-								}
-							);
+							// Drag doesn't like that we are removing the node right after
+							// drag:end. So we postpone it to the next clock cycle.
 
-							instance.moveOption(option, dragStartIndex, dragEndIndex);
-
-							instance.evaluate();
+							A.later(0, instance, instance.moveOption, [dragStartIndex, dragEndIndex]);
 						}
 					},
 
@@ -315,14 +445,22 @@ AUI.add(
 					_bindOptionUI: function(option) {
 						var instance = this;
 
-						option.after('render', A.bind('_afterRender', instance, option));
+						var editable = instance.get('editable');
 
-						option.bindContainerEvent('click', A.bind('_onOptionClickClose', instance, option), '.close');
-						option.on('valueChanged', A.bind('_onOptionValueChange', instance));
+						if (editable) {
+							option.after(A.rbind('_afterOptionNormalizeKey', instance, option), option, 'normalizeKey');
+							option.bindContainerEvent('click', A.bind('_onOptionClickClose', instance, option), '.close');
+						}
 					},
 
 					_canSortNode: function(event) {
 						var instance = this;
+
+						var sortable = instance.get('sortable');
+
+						if (!sortable) {
+							return false;
+						}
 
 						var dragNode = event.drag.get('node');
 						var dropNode = event.drop.get('node');
@@ -358,6 +496,31 @@ AUI.add(
 						instance._bindOptionUI(instance._mainOption);
 					},
 
+					_getCurrentEditingLanguageId: function() {
+						var instance = this;
+
+						var form = instance.get('parent');
+
+						if (!form) {
+							return instance.get('locale');
+						}
+
+						var field = form.get('field');
+
+						return field.get('locale');
+					},
+
+					_getCurrentLocaleOptionsValues: function() {
+						var instance = this;
+
+						var value = instance.get('value');
+
+						var defaultLanguageId = instance.get('locale');
+						var editingLanguageId = instance._getCurrentEditingLanguageId();
+
+						return value[editingLanguageId] || value[defaultLanguageId] || [];
+					},
+
 					_getNodeIndex: function(node) {
 						var instance = this;
 
@@ -376,6 +539,14 @@ AUI.add(
 						return container.one('.options');
 					},
 
+					_onDestroyOption: function(event) {
+						var instance = this;
+
+						var option = event.target;
+
+						A.DD.DDM.getDrag(option.get('container')).destroy();
+					},
+
 					_onFocusOption: function(event) {
 						event.target.scrollIntoView();
 					},
@@ -383,42 +554,15 @@ AUI.add(
 					_onOptionClickClose: function(option) {
 						var instance = this;
 
-						if (option === instance._mainOption) {
-							var repetitions = option.getRepeatedSiblings();
-
-							var index = repetitions.indexOf(option);
-
-							instance._mainOption = repetitions[index + 1];
-						}
-
-						option.remove();
-
-						instance.fire('removeOption');
+						instance.removeOption(option);
 					},
 
-					_onOptionValueChange: function(event) {
-						var instance = this;
-
-						var option = event.target;
-
-						var repetitions = option.getRepeatedSiblings();
-
-						if (option.get('repeatedIndex') === repetitions.length - 1) {
-							instance.addOption();
-						}
-
-						var value = instance.getValue();
-
-						if (value.length > 0 && instance.get('required')) {
-							instance.set('errorMessage', '');
-							instance.set('valid', true);
-						}
-					},
-
-					_renderOptions: function(optionsValues) {
+					_renderOptions: function() {
 						var instance = this;
 
 						var container = instance.get('container');
+
+						var optionsValues = instance._getCurrentLocaleOptionsValues();
 
 						var mainOption = instance._mainOption;
 
@@ -441,7 +585,7 @@ AUI.add(
 							}
 						);
 
-						if (optionsValues.length) {
+						if (optionsValues.length && optionsValues[optionsValues.length - 1].value) {
 							instance.addOption();
 						}
 					},
@@ -455,8 +599,51 @@ AUI.add(
 					},
 
 					_restoreOption: function(option, contextValue) {
-						option.setValue(contextValue.label);
+						var instance = this;
+
+						instance._skipOptionValueChange = true;
+
+						option.set('value', contextValue.label);
 						option.set('key', contextValue.value);
+
+						option.setValue(contextValue.label);
+
+						if (contextValue.value && option.normalizeKey(contextValue.label) !== contextValue.value) {
+							option.set('generationLocked', true);
+						}
+						else {
+							option.set('generationLocked', false);
+						}
+
+						instance._skipOptionValueChange = false;
+					},
+
+					_setContext: function(val) {
+						var instance = this;
+
+						var context = OptionsField.superclass._setContext.apply(instance, arguments);
+
+						var locale = instance.get('locale');
+
+						var value = context.value;
+
+						if (value && !value[locale]) {
+							value[locale] = value[context.defaultLanguageId];
+						}
+
+						return context;
+					},
+
+					_setValue: function(optionValues) {
+						var instance = this;
+
+						var value = instance.get('value');
+
+						var editingLanguageId = instance._getCurrentEditingLanguageId();
+
+						value[editingLanguageId] = optionValues;
+
+						instance.set('value', value);
 					},
 
 					_syncOptionUI: function(option) {

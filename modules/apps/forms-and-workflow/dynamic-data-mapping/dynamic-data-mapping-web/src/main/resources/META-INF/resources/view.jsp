@@ -21,7 +21,7 @@ String tabs1 = ParamUtil.getString(request, "tabs1", "structures");
 
 String redirect = ParamUtil.getString(request, "redirect");
 
-long groupId = ParamUtil.getLong(request, "groupId", themeDisplay.getSiteGroupId());
+long groupId = ParamUtil.getLong(request, "groupId", PortalUtil.getScopeGroupId(request, refererPortletName));
 
 boolean showBackURL = ParamUtil.getBoolean(request, "showBackURL", true);
 
@@ -169,7 +169,7 @@ structureSearch.setOrderByType(ddmDisplayContext.getOrderByType());
 	</div>
 </aui:form>
 
-<c:if test="<%= ddmDisplay.isShowAddStructureButton() && DDMStructurePermission.containsAddStruturePermission(permissionChecker, groupId, scopeClassNameId) %>">
+<c:if test="<%= ddmDisplay.isShowAddButton(themeDisplay.getScopeGroup()) && DDMStructurePermission.containsAddStruturePermission(permissionChecker, groupId, scopeClassNameId) %>">
 	<liferay-portlet:renderURL var="viewStructuresURL">
 		<portlet:param name="mvcPath" value="/view.jsp" />
 		<portlet:param name="groupId" value="<%= String.valueOf(groupId) %>" />

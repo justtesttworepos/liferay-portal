@@ -27,6 +27,8 @@ taglib uri="http://liferay.com/tld/ui" prefix="liferay-ui" %><%@
 taglib uri="http://liferay.com/tld/util" prefix="liferay-util" %>
 
 <%@ page import="com.liferay.dynamic.data.lists.exception.RecordSetNameException" %><%@
+page import="com.liferay.dynamic.data.lists.exception.RecordSetSettingsRedirectURLException" %><%@
+page import="com.liferay.dynamic.data.lists.form.web.RecordSetDDMFormFieldSettingsException" %><%@
 page import="com.liferay.dynamic.data.lists.form.web.internal.display.context.DDLFormAdminDisplayContext" %><%@
 page import="com.liferay.dynamic.data.lists.form.web.internal.display.context.DDLFormViewRecordsDisplayContext" %><%@
 page import="com.liferay.dynamic.data.lists.model.DDLRecord" %><%@
@@ -49,7 +51,7 @@ page import="com.liferay.portal.kernel.language.UnicodeLanguageUtil" %><%@
 page import="com.liferay.portal.kernel.model.Portlet" %><%@
 page import="com.liferay.portal.kernel.portlet.LiferayWindowState" %><%@
 page import="com.liferay.portal.kernel.util.HtmlUtil" %><%@
-page import="com.liferay.portal.kernel.util.LocalizationUtil" %><%@
+page import="com.liferay.portal.kernel.util.LocaleUtil" %><%@
 page import="com.liferay.portal.kernel.util.ParamUtil" %><%@
 page import="com.liferay.portal.kernel.util.PortalUtil" %><%@
 page import="com.liferay.portal.kernel.util.StringBundler" %><%@
@@ -60,7 +62,10 @@ page import="com.liferay.taglib.search.DateSearchEntry" %><%@
 page import="com.liferay.taglib.search.ResultRow" %>
 
 <%@ page import="java.util.List" %><%@
-page import="java.util.Map" %>
+page import="java.util.Locale" %><%@
+page import="java.util.Map" %><%@
+page import="java.util.Map.Entry" %><%@
+page import="java.util.Set" %>
 
 <%@ page import="javax.portlet.PortletURL" %>
 
