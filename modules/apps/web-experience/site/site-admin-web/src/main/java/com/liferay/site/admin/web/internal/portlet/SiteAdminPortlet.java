@@ -17,9 +17,9 @@ package com.liferay.site.admin.web.internal.portlet;
 import com.liferay.asset.kernel.exception.AssetCategoryException;
 import com.liferay.asset.kernel.exception.AssetTagException;
 import com.liferay.exportimport.kernel.exception.RemoteExportException;
-import com.liferay.exportimport.kernel.staging.StagingUtil;
+import com.liferay.exportimport.kernel.staging.Staging;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskConstants;
-import com.liferay.portal.kernel.backgroundtask.BackgroundTaskManagerUtil;
+import com.liferay.portal.kernel.backgroundtask.BackgroundTaskManager;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.DuplicateGroupException;
 import com.liferay.portal.kernel.exception.GroupFriendlyURLException;
@@ -37,6 +37,8 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.RemoteOptionsException;
 import com.liferay.portal.kernel.exception.RequiredGroupException;
 import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
@@ -75,11 +77,11 @@ import com.liferay.portal.kernel.transaction.TransactionConfig;
 import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
-import com.liferay.portal.kernel.util.HttpUtil;
+import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocalizationUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
-import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PrefsPropsUtil;
 import com.liferay.portal.kernel.util.PropertiesParamUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
@@ -181,7 +183,7 @@ public class SiteAdminPortlet extends MVCPortlet {
 		long backgroundTaskId = ParamUtil.getLong(
 			actionRequest, BackgroundTaskConstants.BACKGROUND_TASK_ID);
 
-		BackgroundTaskManagerUtil.deleteBackgroundTask(backgroundTaskId);
+		backgroundTaskManager.deleteBackgroundTask(backgroundTaskId);
 	}
 
 	public void deleteGroups(
@@ -228,7 +230,7 @@ public class SiteAdminPortlet extends MVCPortlet {
 				SiteAdminPortletKeys.SITE_SETTINGS + "requestProcessed");
 		}
 
-		PortletURL siteAdministrationURL = PortalUtil.getControlPanelPortletURL(
+		PortletURL siteAdministrationURL = portal.getControlPanelPortletURL(
 			actionRequest, group, SiteAdminPortletKeys.SITE_SETTINGS, 0, 0,
 			PortletRequest.RENDER_PHASE);
 
@@ -364,7 +366,7 @@ public class SiteAdminPortlet extends MVCPortlet {
 
 		String redirect = ParamUtil.getString(actionRequest, "redirect");
 
-		return HttpUtil.getParameter(
+		return http.getParameter(
 			redirect, actionResponse.getNamespace() + "historyKey", false);
 	}
 
@@ -392,6 +394,12 @@ public class SiteAdminPortlet extends MVCPortlet {
 			refererGroupId = refererLayout.getGroupId();
 		}
 		catch (NoSuchLayoutException nsle) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(nsle, nsle);
+			}
 		}
 
 		return refererGroupId;
@@ -577,13 +585,15 @@ public class SiteAdminPortlet extends MVCPortlet {
 			group.isManualMembership(), group.getMembershipRestriction(),
 			group.getFriendlyURL(), group.isInheritContent(), active,
 			serviceContext);
+
+		themeDisplay.setScopeGroupId(groupId);
 	}
 
 	protected Group updateGroup(ActionRequest actionRequest) throws Exception {
 		ThemeDisplay themeDisplay = (ThemeDisplay)actionRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		long userId = PortalUtil.getUserId(actionRequest);
+		long userId = portal.getUserId(actionRequest);
 
 		long liveGroupId = ParamUtil.getLong(actionRequest, "liveGroupId");
 
@@ -867,7 +877,7 @@ public class SiteAdminPortlet extends MVCPortlet {
 				actionRequest, "layoutSetVisibility");
 			boolean layoutSetPrototypeLinkEnabled = ParamUtil.getBoolean(
 				actionRequest, "layoutSetPrototypeLinkEnabled",
-				(layoutSetPrototypeId > 0));
+				layoutSetPrototypeId > 0);
 
 			if (layoutSetVisibility == _LAYOUT_SET_VISIBILITY_PRIVATE) {
 				privateLayoutSetPrototypeId = layoutSetPrototypeId;
@@ -898,33 +908,45 @@ public class SiteAdminPortlet extends MVCPortlet {
 				privateLayoutSetPrototypeLinkEnabled);
 		}
 
-		// Staging
-
-		if (!privateLayoutSet.isLayoutSetPrototypeLinkActive() &&
-			!publicLayoutSet.isLayoutSetPrototypeLinkActive()) {
-
-			StagingUtil.updateStaging(actionRequest, liveGroup);
-		}
+		themeDisplay.setSiteGroupId(liveGroup.getGroupId());
 
 		return liveGroup;
 	}
+
+	@Reference
+	protected BackgroundTaskManager backgroundTaskManager;
 
 	protected GroupLocalService groupLocalService;
 	protected GroupSearchProvider groupSearchProvider;
 	protected GroupService groupService;
 	protected GroupURLProvider groupURLProvider;
+
+	@Reference
+	protected Http http;
+
 	protected LayoutLocalService layoutLocalService;
 	protected LayoutSetLocalService layoutSetLocalService;
 	protected LayoutSetPrototypeService layoutSetPrototypeService;
 	protected LayoutSetService layoutSetService;
 	protected MembershipRequestLocalService membershipRequestLocalService;
 	protected MembershipRequestService membershipRequestService;
+
+	@Reference
+	protected Portal portal;
+
 	protected RoleLocalService roleLocalService;
+
+	@Reference
+	protected Staging staging;
+
 	protected TeamLocalService teamLocalService;
 	protected UserLocalService userLocalService;
 	protected UserService userService;
 
 	private static final int _LAYOUT_SET_VISIBILITY_PRIVATE = 1;
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		SiteAdminPortlet.class);
 
 	private static final TransactionConfig _transactionConfig =
 		TransactionConfig.Factory.create(

@@ -39,9 +39,8 @@ import com.liferay.portal.util.PropsValues;
  * @author Brian Wing Shun Chan
  */
 @OSGiBeanProperties(
-	property = {
-		"model.class.name=com.liferay.message.boards.kernel.model.MBMessage"
-	}
+	property =
+		{"model.class.name=com.liferay.message.boards.kernel.model.MBMessage"}
 )
 public class MBMessagePermission implements BaseModelPermissionChecker {
 
@@ -169,9 +168,21 @@ public class MBMessagePermission implements BaseModelPermissionChecker {
 			return true;
 		}
 
-		return permissionChecker.hasPermission(
-			message.getGroupId(), MBMessage.class.getName(),
-			message.getMessageId(), actionId);
+		if (!permissionChecker.hasPermission(
+				message.getGroupId(), MBMessage.class.getName(),
+				message.getMessageId(), actionId)) {
+
+			return false;
+		}
+
+		if (message.isRoot() || !actionId.equals(ActionKeys.VIEW)) {
+			return true;
+		}
+
+		return contains(
+			permissionChecker,
+			MBMessageLocalServiceUtil.getMessage(message.getParentMessageId()),
+			actionId);
 	}
 
 	@Override

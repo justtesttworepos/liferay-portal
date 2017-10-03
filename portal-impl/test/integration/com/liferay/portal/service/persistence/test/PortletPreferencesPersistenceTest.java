@@ -27,7 +27,6 @@ import com.liferay.portal.kernel.service.persistence.PortletPreferencesPersisten
 import com.liferay.portal.kernel.service.persistence.PortletPreferencesUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
@@ -36,6 +35,7 @@ import com.liferay.portal.kernel.util.OrderByComparatorFactoryUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
+import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -213,6 +213,17 @@ public class PortletPreferencesPersistenceTest {
 		_persistence.countByO_P_P(0, 0L, StringPool.NULL);
 
 		_persistence.countByO_P_P(0, 0L, (String)null);
+	}
+
+	@Test
+	public void testCountByC_O_O_LikeP() throws Exception {
+		_persistence.countByC_O_O_LikeP(RandomTestUtil.nextLong(),
+			RandomTestUtil.nextLong(), RandomTestUtil.nextInt(),
+			StringPool.BLANK);
+
+		_persistence.countByC_O_O_LikeP(0L, 0L, 0, StringPool.NULL);
+
+		_persistence.countByC_O_O_LikeP(0L, 0L, 0, (String)null);
 	}
 
 	@Test

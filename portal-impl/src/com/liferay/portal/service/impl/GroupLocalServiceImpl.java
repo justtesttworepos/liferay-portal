@@ -27,6 +27,10 @@ import com.liferay.portal.kernel.backgroundtask.BackgroundTask;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskConstants;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskManagerUtil;
 import com.liferay.portal.kernel.cache.thread.local.ThreadLocalCachable;
+import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.Property;
+import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.DuplicateGroupException;
 import com.liferay.portal.kernel.exception.GroupFriendlyURLException;
@@ -70,13 +74,18 @@ import com.liferay.portal.kernel.model.UserPersonalSite;
 import com.liferay.portal.kernel.model.WorkflowDefinitionLink;
 import com.liferay.portal.kernel.scheduler.SchedulerEngineHelperUtil;
 import com.liferay.portal.kernel.scheduler.StorageType;
+import com.liferay.portal.kernel.search.Document;
+import com.liferay.portal.kernel.search.Indexer;
+import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.security.permission.RolePermissions;
+import com.liferay.portal.kernel.security.permission.UserBag;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.spring.aop.Skip;
 import com.liferay.portal.kernel.transaction.Propagation;
+import com.liferay.portal.kernel.transaction.TransactionCommitCallbackUtil;
 import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.tree.TreeModelTasksAdapter;
 import com.liferay.portal.kernel.tree.TreePathUtil;
@@ -104,6 +113,7 @@ import com.liferay.portal.kernel.util.comparator.GroupNameComparator;
 import com.liferay.portal.kernel.workflow.WorkflowHandler;
 import com.liferay.portal.kernel.workflow.WorkflowHandlerRegistryUtil;
 import com.liferay.portal.model.impl.LayoutImpl;
+import com.liferay.portal.security.permission.PermissionCacheUtil;
 import com.liferay.portal.service.base.GroupLocalServiceBaseImpl;
 import com.liferay.portal.theme.ThemeLoader;
 import com.liferay.portal.theme.ThemeLoaderFactory;
@@ -137,20 +147,20 @@ import java.util.Set;
  * Groups are also the entity to which LayoutSets are generally associated.
  * Since LayoutSets are the parent entities of Layouts (i.e. pages), no entity
  * can have associated pages without also having an associated Group. This
- * relationship can be depicted as ... Layout -> LayoutSet -> Group[type] [->
- * Entity]. Note, the Entity part is optional.
+ * relationship can be depicted as ... Layout -> LayoutSet -> Group[type] ->
+ * [Entity]. Note, the Entity part is optional.
  * </p>
  *
  * <p>
  * Group has a "type" definition that is typically identified by two fields of
- * the entity - <code>String className</code>, and <code>int type </code>.
+ * the entity - <code>String className</code>, and <code>int type</code>.
  * </p>
  *
  * <p>
  * The <code>className</code> field helps create the group's association with
- * other entities (e.g. Organization, User, Company, UserGroup, ... etc.). The
- * value of <code>className</code> is the full name of the entity's class and
- * the primary key of the associated entity instance. A site has
+ * other entities (e.g. Organization, User, Company, UserGroup, etc.). The value
+ * of <code>className</code> is the full name of the entity's class and the
+ * primary key of the associated entity instance. A site has
  * <code>className="Group"</code> and has no associated entity.
  * </p>
  *
@@ -161,7 +171,7 @@ import java.util.Set;
  * </p>
  *
  * <p>
- * Here is a listing of how Group is related to some portal entities ...
+ * Here is a listing of how Group is related to some portal entities:
  * </p>
  *
  * <ul>
@@ -169,28 +179,31 @@ import java.util.Set;
  * Site is a Group with <code>className="Group"</code>
  * </li>
  * <li>
- * Company has 1 Group (this is the global scope, but never has pages)
+ * Company has one Group (this is the global scope, but never has pages)
  * </li>
  * <li>
- * User has 1 Group (pages are optional based on the behavior configuration for
+ * User has one Group (pages are optional based on the behavior configuration
+ * for
  * personal pages)
  * </li>
  * <li>
- * Layout Template (<code>LayoutPrototype</code>) has 1 Group which uses only 1
- * of it's 2 LayoutSets to store a single page which can later be used to
+ * Layout Template (<code>LayoutPrototype</code>) has 1 Group which uses only
+ * one
+ * of its two LayoutSets to store a single page which can later be used to
  * derive a single page in any Site
  * </li>
  * <li>
  * Site Template (<code>LayoutSetPrototype</code>) has 1 Group which uses only
- * 1 of it's 2 LayoutSets to store many pages which can later be used to derive
+ * one of its two LayoutSets to store many pages which can later be used to
+ * derive
  * entire Sites or pulled into an existing Site
  * </li>
  * <li>
- * Organization has 1 Group, but can also be associated to a Site at any point
- * in it's life cycle in order to support having pages
+ * Organization has one Group, but can also be associated to a Site at any point
+ * in its life cycle in order to support having pages
  * </li>
  * <li>
- * UserGroup has 1 Group that can have pages in both of the group's LayoutSets
+ * UserGroup has one Group that can have pages in both of the group's LayoutSets
  * which are later inherited by users assigned to the UserGroup
  * </li>
  * </ul>
@@ -684,6 +697,12 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 					group.getGroupId(), true, serviceContext);
 			}
 			catch (NoSuchLayoutSetException nslse) {
+
+				// LPS-52675
+
+				if (_log.isDebugEnabled()) {
+					_log.debug(nslse, nslse);
+				}
 			}
 
 			try {
@@ -691,6 +710,12 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 					group.getGroupId(), false, serviceContext);
 			}
 			catch (NoSuchLayoutSetException nslse) {
+
+				// LPS-52675
+
+				if (_log.isDebugEnabled()) {
+					_log.debug(nslse, nslse);
+				}
 			}
 
 			// Membership requests
@@ -729,6 +754,8 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 							group.getGroupId());
 				}
 			}
+
+			systemEventLocalService.deleteSystemEvents(group.getGroupId());
 
 			// Themes
 
@@ -785,10 +812,6 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 				resourcePermissionLocalService.deleteResourcePermission(
 					resourcePermission);
 			}
-
-			// Trash
-
-			trashEntryLocalService.deleteEntries(group.getGroupId());
 
 			// Workflow
 
@@ -1008,6 +1031,11 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 	}
 
 	@Override
+	public Group fetchStagingGroup(long liveGroupId) {
+		return groupPersistence.fetchByLiveGroupId(liveGroupId);
+	}
+
+	@Override
 	public Group fetchUserGroup(long companyId, long userId) {
 		long classNameId = classNameLocalService.getClassNameId(User.class);
 
@@ -1032,6 +1060,11 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 
 		return groupPersistence.fetchByC_C_C(
 			companyId, classNameId, defaultUserId);
+	}
+
+	@Override
+	public List<Long> getActiveGroupIds(long userId) {
+		return groupFinder.findByActiveGroupIds(userId);
 	}
 
 	/**
@@ -1213,6 +1246,13 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 
 		return groupPersistence.findByC_P_S_I(
 			companyId, parentGroupId, site, inheritContent);
+	}
+
+	@Override
+	public List<Group> getGroups(
+		long companyId, String treePath, boolean site) {
+
+		return groupPersistence.findByC_T_S(companyId, treePath, site);
 	}
 
 	/**
@@ -1793,17 +1833,35 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 
 	@Override
 	public List<Group> getUserSitesGroups(long userId) throws PortalException {
-		User user = userPersistence.findByPrimaryKey(userId);
+		UserBag userBag = PermissionCacheUtil.getUserBag(userId);
 
-		LinkedHashMap<String, Object> groupParams = new LinkedHashMap<>();
+		if (userBag == null) {
+			User user = userPersistence.findByPrimaryKey(userId);
 
-		groupParams.put("inherit", Boolean.TRUE);
-		groupParams.put("site", Boolean.TRUE);
-		groupParams.put("usersGroups", userId);
+			LinkedHashMap<String, Object> groupParams = new LinkedHashMap<>();
 
-		return groupFinder.findByCompanyId(
-			user.getCompanyId(), groupParams, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, new GroupNameComparator(true));
+			groupParams.put("inherit", Boolean.TRUE);
+			groupParams.put("site", Boolean.TRUE);
+			groupParams.put("usersGroups", userId);
+
+			return groupFinder.findByCompanyId(
+				user.getCompanyId(), groupParams, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS, new GroupNameComparator(true));
+		}
+
+		Collection<Group> userGroups = userBag.getUserGroups();
+
+		List<Group> userSiteGroups = new ArrayList<>(userGroups.size());
+
+		for (Group group : userGroups) {
+			if (group.isSite()) {
+				userSiteGroups.add(group);
+			}
+		}
+
+		userSiteGroups.sort(new GroupNameComparator(true));
+
+		return userSiteGroups;
 	}
 
 	@Override
@@ -1891,6 +1949,26 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 		else {
 			return false;
 		}
+	}
+
+	@Override
+	@Skip
+	public boolean isLiveGroupActive(Group group) {
+		if (group == null) {
+			return false;
+		}
+
+		if (!group.isStagingGroup()) {
+			return group.isActive();
+		}
+
+		Group liveGroup = group.getLiveGroup();
+
+		if (liveGroup == null) {
+			return false;
+		}
+
+		return liveGroup.isActive();
 	}
 
 	/**
@@ -3098,7 +3176,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 			ServiceContext serviceContext)
 		throws PortalException {
 
-		Group group = groupPersistence.findByPrimaryKey(groupId);
+		final Group group = groupPersistence.findByPrimaryKey(groupId);
 
 		String className = group.getClassName();
 		long classNameId = group.getClassNameId();
@@ -3156,13 +3234,33 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 		group.setMembershipRestriction(membershipRestriction);
 		group.setFriendlyURL(friendlyURL);
 		group.setInheritContent(inheritContent);
-		group.setActive(active);
+
+		if (group.isActive() != active) {
+			group.setActive(active);
+
+			TransactionCommitCallbackUtil.registerCallback(
+				() -> {
+					reindex(group.getCompanyId(), getUserPrimaryKeys(groupId));
+
+					return null;
+				});
+		}
 
 		if ((serviceContext != null) && group.isSite()) {
 			group.setExpandoBridgeAttributes(serviceContext);
 		}
 
 		groupPersistence.update(group);
+
+		if (group.hasStagingGroup() && !group.isStagedRemotely()) {
+			Group stagingGroup = group.getStagingGroup();
+
+			stagingGroup.setParentGroupId(group.getParentGroupId());
+
+			stagingGroup.setTreePath(stagingGroup.buildTreePath());
+
+			groupPersistence.update(stagingGroup);
+		}
 
 		// Asset
 
@@ -3493,10 +3591,11 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 				_log.error(
 					"Unable to delete data for portlet " +
 						portletDataHandler.getPortletId() + " in group " +
-							group.getGroupId());
+							group.getGroupId(),
+					e);
 
 				if (portletDataHandler.isRollbackOnException()) {
-					throw new SystemException(e);
+					throw e;
 				}
 			}
 		}
@@ -3552,11 +3651,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 
 			long groupParentGroupId = group.getParentGroupId();
 
-			if ((parentGroupIdEquals &&
-				 (groupParentGroupId != parentGroupId)) ||
-				(!parentGroupIdEquals &&
-				 (groupParentGroupId == parentGroupId))) {
-
+			if (parentGroupIdEquals && (groupParentGroupId != parentGroupId)) {
 				iterator.remove();
 
 				continue;
@@ -3587,7 +3682,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 			// Filter by active
 
 			if (active != null) {
-				if (active != group.isActive()) {
+				if (active != isLiveGroupActive(group)) {
 					iterator.remove();
 
 					continue;
@@ -3727,8 +3822,7 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 
 						if ((resourcePermission.getRoleId() ==
 								rolePermissions.getRoleId()) &&
-							resourcePermission.hasAction(
-								resourceAction)) {
+							resourcePermission.hasAction(resourceAction)) {
 
 							Group group = groupPersistence.fetchByPrimaryKey(
 								GetterUtil.getLong(
@@ -4061,6 +4155,51 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 		return false;
 	}
 
+	protected void reindex(long companyId, long[] userIds)
+		throws PortalException {
+
+		final Indexer<User> indexer = IndexerRegistryUtil.nullSafeGetIndexer(
+			User.class);
+
+		final IndexableActionableDynamicQuery indexableActionableDynamicQuery =
+			userLocalService.getIndexableActionableDynamicQuery();
+
+		indexableActionableDynamicQuery.setAddCriteriaMethod(
+			dynamicQuery -> {
+				Property userId = PropertyFactoryUtil.forName("userId");
+
+				dynamicQuery.add(userId.in(userIds));
+			});
+		indexableActionableDynamicQuery.setCompanyId(companyId);
+		indexableActionableDynamicQuery.setPerformActionMethod(
+			new ActionableDynamicQuery.PerformActionMethod<User>() {
+
+				@Override
+				public void performAction(User user) {
+					if (!user.isDefaultUser()) {
+						try {
+							Document document = indexer.getDocument(user);
+
+							indexableActionableDynamicQuery.addDocuments(
+								document);
+						}
+						catch (PortalException pe) {
+							if (_log.isWarnEnabled()) {
+								_log.warn(
+									"Unable to index user " + user.getUserId(),
+									pe);
+							}
+						}
+					}
+				}
+
+			});
+		indexableActionableDynamicQuery.setSearchEngineId(
+			indexer.getSearchEngineId());
+
+		indexableActionableDynamicQuery.performActions();
+	}
+
 	protected void setCompanyPermissions(
 			Role role, String name, String[] actionIds)
 		throws PortalException {
@@ -4280,6 +4419,12 @@ public class GroupLocalServiceImpl extends GroupLocalServiceBaseImpl {
 			}
 		}
 		catch (NoSuchGroupException nsge) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(nsge, nsge);
+			}
 		}
 
 		if (site) {

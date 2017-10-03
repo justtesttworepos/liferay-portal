@@ -14,18 +14,23 @@
 
 package com.liferay.blogs.internal.exportimport.data.handler;
 
-import com.liferay.blogs.internal.exportimport.content.processor.BlogsEntryDocumentLibraryExportImportContentProcessor;
-import com.liferay.blogs.kernel.model.BlogsEntry;
+import com.liferay.asset.kernel.model.AssetCategory;
+import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.service.BlogsEntryLocalService;
 import com.liferay.document.library.kernel.exception.NoSuchFileException;
 import com.liferay.document.library.kernel.model.DLFileEntry;
-import com.liferay.exportimport.content.processor.ExportImportContentProcessorController;
+import com.liferay.exportimport.content.processor.ExportImportContentProcessor;
 import com.liferay.exportimport.data.handler.base.BaseStagedModelDataHandler;
 import com.liferay.exportimport.kernel.lar.ExportImportPathUtil;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
+import com.liferay.exportimport.kernel.lar.PortletDataException;
 import com.liferay.exportimport.kernel.lar.StagedModelDataHandler;
 import com.liferay.exportimport.kernel.lar.StagedModelDataHandlerUtil;
 import com.liferay.exportimport.kernel.lar.StagedModelModifiedDateComparator;
+import com.liferay.friendly.url.model.FriendlyURLEntry;
+import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
+import com.liferay.portal.kernel.comment.CommentManager;
+import com.liferay.portal.kernel.comment.DiscussionStagingHandler;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
@@ -37,9 +42,13 @@ import com.liferay.portal.kernel.service.ImageLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.servlet.taglib.ui.ImageSelector;
 import com.liferay.portal.kernel.trash.TrashHandler;
+import com.liferay.portal.kernel.trash.TrashHandlerRegistryUtil;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StreamUtil;
 import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringPool;
@@ -47,6 +56,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portlet.documentlibrary.lar.FileEntryUtil;
+import com.liferay.ratings.kernel.model.RatingsEntry;
 
 import java.io.InputStream;
 
@@ -56,6 +66,7 @@ import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 
 /**
  * @author Zsolt Berentey
@@ -173,13 +184,14 @@ public class BlogsEntryStagedModelDataHandler
 				PortletDataContext.REFERENCE_TYPE_WEAK);
 		}
 
+		_exportFriendlyURLEntries(portletDataContext, entry);
+
 		String content =
-			_exportImportContentProcessorController.
-				replaceExportContentReferences(
-					portletDataContext, entry, entry.getContent(),
-					portletDataContext.getBooleanParameter(
-						"blogs", "referenced-content"),
-					true);
+			_exportImportContentProcessor.replaceExportContentReferences(
+				portletDataContext, entry, entry.getContent(),
+				portletDataContext.getBooleanParameter(
+					"blogs", "referenced-content"),
+				true);
 
 		entry.setContent(content);
 
@@ -217,9 +229,8 @@ public class BlogsEntryStagedModelDataHandler
 			portletDataContext.getImportDataStagedModelElement(entry);
 
 		String content =
-			_exportImportContentProcessorController.
-				replaceImportContentReferences(
-					portletDataContext, entry, entry.getContent());
+			_exportImportContentProcessor.replaceImportContentReferences(
+				portletDataContext, entry, entry.getContent());
 
 		entry.setContent(content);
 
@@ -281,21 +292,13 @@ public class BlogsEntryStagedModelDataHandler
 				entry.getCoverImageCaption(), null, null, serviceContext);
 		}
 
-		if ((entry.getCoverImageFileEntryId() == 0) &&
-			Validator.isNull(entry.getCoverImageURL()) &&
-			(entry.getSmallImageFileEntryId() == 0) &&
-			Validator.isNull(entry.getSmallImageURL()) &&
-			!entry.isSmallImage()) {
-
-			portletDataContext.importClassedModel(entry, importedEntry);
-
-			return;
-		}
-
 		// Cover image
 
 		ImageSelector coverImageSelector = null;
 
+		Map<Long, Long> fileEntryIds =
+			(Map<Long, Long>)portletDataContext.getNewPrimaryKeysMap(
+				FileEntry.class);
 		List<Element> attachmentElements =
 			portletDataContext.getReferenceDataElements(
 				entry, DLFileEntry.class,
@@ -305,14 +308,22 @@ public class BlogsEntryStagedModelDataHandler
 			coverImageSelector = new ImageSelector(entry.getCoverImageURL());
 		}
 		else if (entry.getCoverImageFileEntryId() != 0) {
+			long coverImageFileEntryId = MapUtil.getLong(
+				fileEntryIds, entry.getCoverImageFileEntryId(), 0);
+
+			importedEntry.setCoverImageFileEntryId(coverImageFileEntryId);
+
+			_blogsEntryLocalService.updateBlogsEntry(importedEntry);
+
 			coverImageSelector = _getImageSelector(
 				portletDataContext, entry.getCoverImageFileEntryId(),
 				attachmentElements);
 		}
 
 		if (coverImageSelector != null) {
-			_blogsEntryLocalService.addCoverImage(
-				importedEntry.getEntryId(), coverImageSelector);
+			_blogsEntryLocalService.addOriginalImageFileEntry(
+				userId, importedEntry.getGroupId(), importedEntry.getEntryId(),
+				coverImageSelector);
 		}
 
 		// Small image
@@ -347,6 +358,13 @@ public class BlogsEntryStagedModelDataHandler
 				}
 			}
 			else if (entry.getSmallImageFileEntryId() != 0) {
+				long smallImageFileEntryId = MapUtil.getLong(
+					fileEntryIds, entry.getSmallImageFileEntryId(), 0);
+
+				importedEntry.setSmallImageFileEntryId(smallImageFileEntryId);
+
+				_blogsEntryLocalService.updateBlogsEntry(importedEntry);
+
 				smallImageSelector = _getImageSelector(
 					portletDataContext, entry.getSmallImageFileEntryId(),
 					attachmentElements);
@@ -354,14 +372,23 @@ public class BlogsEntryStagedModelDataHandler
 		}
 
 		if (smallImageSelector != null) {
-			_blogsEntryLocalService.addSmallImage(
-				importedEntry.getEntryId(), smallImageSelector);
+			_blogsEntryLocalService.addOriginalImageFileEntry(
+				userId, importedEntry.getGroupId(), importedEntry.getEntryId(),
+				smallImageSelector);
 		}
 
 		if ((coverImageSelector != null) || (smallImageSelector != null)) {
 			importedEntry = _blogsEntryLocalService.getEntry(
 				importedEntry.getEntryId());
 		}
+
+		Map<Long, Long> newPrimaryKeysMap =
+			(Map<Long, Long>)portletDataContext.getNewPrimaryKeysMap(
+				BlogsEntry.class);
+
+		newPrimaryKeysMap.put(entry.getEntryId(), importedEntry.getEntryId());
+
+		_importFriendlyURLEntries(portletDataContext, entry, importedEntry);
 
 		portletDataContext.importClassedModel(entry, importedEntry);
 	}
@@ -380,7 +407,8 @@ public class BlogsEntryStagedModelDataHandler
 			return;
 		}
 
-		TrashHandler trashHandler = existingEntry.getTrashHandler();
+		TrashHandler trashHandler = TrashHandlerRegistryUtil.getTrashHandler(
+			BlogsEntry.class.getName());
 
 		if (trashHandler.isRestorable(existingEntry.getEntryId())) {
 			trashHandler.restoreTrashEntry(userId, existingEntry.getEntryId());
@@ -423,13 +451,48 @@ public class BlogsEntryStagedModelDataHandler
 		return inputStream;
 	}
 
-	/**
-	 * @deprecated As of 1.1.0
-	 */
-	@Deprecated
-	protected void setBlogsEntryExportImportContentProcessor(
-		BlogsEntryDocumentLibraryExportImportContentProcessor
-			blogsEntryExportImportContentProcessor) {
+	@Override
+	protected void importReferenceStagedModels(
+			PortletDataContext portletDataContext, BlogsEntry stagedModel)
+		throws PortletDataException {
+
+		Element stagedModelElement =
+			portletDataContext.getImportDataStagedModelElement(stagedModel);
+
+		Element referencesElement = stagedModelElement.element("references");
+
+		if (referencesElement == null) {
+			return;
+		}
+
+		DiscussionStagingHandler discussionStagingHandler =
+			_commentManager.getDiscussionStagingHandler();
+
+		String stagedModelClassName = null;
+
+		if (discussionStagingHandler != null) {
+			stagedModelClassName = discussionStagingHandler.getClassName();
+		}
+
+		List<Element> referenceElements = referencesElement.elements();
+
+		for (Element referenceElement : referenceElements) {
+			String className = referenceElement.attributeValue("class-name");
+
+			if (className.equals(FriendlyURLEntry.class.getName()) ||
+				className.equals(AssetCategory.class.getName()) ||
+				className.equals(RatingsEntry.class.getName()) ||
+				className.equals(stagedModelClassName)) {
+
+				continue;
+			}
+
+			long classPK = GetterUtil.getLong(
+				referenceElement.attributeValue("class-pk"));
+
+			StagedModelDataHandlerUtil.importReferenceStagedModel(
+				portletDataContext, stagedModel, className, classPK);
+		}
 	}
 
 	@Reference(unbind = "-")
@@ -439,9 +502,44 @@ public class BlogsEntryStagedModelDataHandler
 		_blogsEntryLocalService = blogsEntryLocalService;
 	}
 
+	@Reference(
+		policyOption = ReferencePolicyOption.GREEDY,
+		target = "(model.class.name=com.liferay.blogs.kernel.model.BlogsEntry)",
+		unbind = "-"
+	)
+	protected void setExportImportContentProcessor(
+		ExportImportContentProcessor<String> exportImportContentProcessor) {
+
+		_exportImportContentProcessor = exportImportContentProcessor;
+	}
+
+	@Reference(unbind = "-")
+	protected void setFriendlyURLEntryLocalService(
+		FriendlyURLEntryLocalService friendlyURLEntryLocalService) {
+
+		_friendlyURLEntryLocalService = friendlyURLEntryLocalService;
+	}
+
 	@Reference(unbind = "-")
 	protected void setImageLocalService(ImageLocalService imageLocalService) {
 		_imageLocalService = imageLocalService;
+	}
+
+	private void _exportFriendlyURLEntries(
+			PortletDataContext portletDataContext, BlogsEntry blogsEntry)
+		throws PortletDataException {
+
+		long classNameId = _portal.getClassNameId(BlogsEntry.class);
+
+		List<FriendlyURLEntry> friendlyURLEntries =
+			_friendlyURLEntryLocalService.getFriendlyURLEntries(
+				blogsEntry.getGroupId(), classNameId, blogsEntry.getEntryId());
+
+		for (FriendlyURLEntry friendlyURLEntry : friendlyURLEntries) {
+			StagedModelDataHandlerUtil.exportReferenceStagedModel(
+				portletDataContext, blogsEntry, friendlyURLEntry,
+				PortletDataContext.REFERENCE_TYPE_DEPENDENCY);
+		}
 	}
 
 	private ImageSelector _getImageSelector(
@@ -470,6 +568,12 @@ public class BlogsEntryStagedModelDataHandler
 								fileEntry);
 						}
 						catch (NoSuchFileException nsfe) {
+
+							// LPS-52675
+
+							if (_log.isDebugEnabled()) {
+								_log.debug(nsfe, nsfe);
+							}
 						}
 					}
 					else {
@@ -501,15 +605,51 @@ public class BlogsEntryStagedModelDataHandler
 		return null;
 	}
 
+	private void _importFriendlyURLEntries(
+			PortletDataContext portletDataContext, BlogsEntry blogsEntry,
+			BlogsEntry importedBlogsEntry)
+		throws PortalException {
+
+		List<Element> friendlyURLEntryElements =
+			portletDataContext.getReferenceDataElements(
+				blogsEntry, FriendlyURLEntry.class);
+
+		for (Element friendlyURLEntryElement : friendlyURLEntryElements) {
+			String path = friendlyURLEntryElement.attributeValue("path");
+
+			FriendlyURLEntry friendlyURLEntry =
+				(FriendlyURLEntry)portletDataContext.getZipEntryAsObject(path);
+
+			friendlyURLEntry.setClassNameId(
+				_portal.getClassNameId(BlogsEntry.class));
+
+			StagedModelDataHandlerUtil.importStagedModel(
+				portletDataContext, friendlyURLEntry);
+		}
+
+		FriendlyURLEntry mainFriendlyURLEntry =
+			_friendlyURLEntryLocalService.getMainFriendlyURLEntry(
+				importedBlogsEntry.getGroupId(), BlogsEntry.class,
+				importedBlogsEntry.getEntryId());
+
+		importedBlogsEntry.setUrlTitle(mainFriendlyURLEntry.getUrlTitle());
+
+		_blogsEntryLocalService.updateBlogsEntry(importedBlogsEntry);
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		BlogsEntryStagedModelDataHandler.class);
 
 	private BlogsEntryLocalService _blogsEntryLocalService;
 
 	@Reference
-	private ExportImportContentProcessorController
-		_exportImportContentProcessorController;
+	private CommentManager _commentManager;
 
+	private ExportImportContentProcessor<String> _exportImportContentProcessor;
+	private FriendlyURLEntryLocalService _friendlyURLEntryLocalService;
 	private ImageLocalService _imageLocalService;
+
+	@Reference
+	private Portal _portal;
 
 }

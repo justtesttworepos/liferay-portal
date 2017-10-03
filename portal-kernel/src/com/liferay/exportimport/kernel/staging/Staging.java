@@ -51,6 +51,9 @@ import javax.servlet.http.HttpServletRequest;
 public interface Staging {
 
 	public String buildRemoteURL(
+		ExportImportConfiguration exportImportConfiguration);
+
+	public String buildRemoteURL(
 		String remoteAddress, int remotePort, String remotePathContext,
 		boolean secureConnection);
 
@@ -174,6 +177,8 @@ public interface Staging {
 	@Deprecated
 	public JSONObject getExceptionMessagesJSONObject(
 		Locale locale, Exception e, Map<String, Serializable> contextMap);
+
+	public Group getLiveGroup(Group group);
 
 	public Group getLiveGroup(long groupId);
 
@@ -431,6 +436,12 @@ public interface Staging {
 			Date lastPublishDate)
 		throws PortalException;
 
+	/**
+	 * @deprecated As of 4.0.0, replaced by {@link
+	 *             com.liferay.staging.configuration.web.internal.portlet.StagingConfigurationPortlet#editStagingConfiguration(
+	 *             javax.portlet.ActionRequest, javax.portlet.ActionResponse)}
+	 */
+	@Deprecated
 	public void updateStaging(PortletRequest portletRequest, Group liveGroup)
 		throws PortalException;
 

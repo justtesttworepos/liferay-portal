@@ -22,7 +22,6 @@
 
 <%@ taglib uri="http://liferay.com/tld/aui" prefix="aui" %><%@
 taglib uri="http://liferay.com/tld/portlet" prefix="liferay-portlet" %><%@
-taglib uri="http://liferay.com/tld/security" prefix="liferay-security" %><%@
 taglib uri="http://liferay.com/tld/theme" prefix="liferay-theme" %><%@
 taglib uri="http://liferay.com/tld/ui" prefix="liferay-ui" %><%@
 taglib uri="http://liferay.com/tld/util" prefix="liferay-util" %>
@@ -30,22 +29,12 @@ taglib uri="http://liferay.com/tld/util" prefix="liferay-util" %>
 <%@ page contentType="text/html; charset=UTF-8" %>
 
 <%@ page import="com.liferay.asset.kernel.AssetRendererFactoryRegistryUtil" %><%@
-page import="com.liferay.asset.kernel.model.AssetCategory" %><%@
-page import="com.liferay.asset.kernel.model.AssetEntry" %><%@
 page import="com.liferay.asset.kernel.model.AssetRenderer" %><%@
 page import="com.liferay.asset.kernel.model.AssetRendererFactory" %><%@
-page import="com.liferay.asset.kernel.model.AssetTag" %><%@
-page import="com.liferay.asset.kernel.model.AssetVocabulary" %><%@
-page import="com.liferay.asset.kernel.service.AssetCategoryLocalServiceUtil" %><%@
-page import="com.liferay.asset.kernel.service.AssetCategoryServiceUtil" %><%@
-page import="com.liferay.asset.kernel.service.AssetEntryLocalServiceUtil" %><%@
-page import="com.liferay.asset.kernel.service.AssetTagServiceUtil" %><%@
-page import="com.liferay.asset.kernel.service.AssetVocabularyLocalServiceUtil" %><%@
-page import="com.liferay.asset.kernel.service.AssetVocabularyServiceUtil" %><%@
 page import="com.liferay.document.library.kernel.model.DLFileEntry" %><%@
 page import="com.liferay.document.library.kernel.util.DLUtil" %><%@
-page import="com.liferay.expando.kernel.model.ExpandoBridge" %><%@
 page import="com.liferay.exportimport.kernel.staging.LayoutStagingUtil" %><%@
+page import="com.liferay.exportimport.kernel.staging.StagingUtil" %><%@
 page import="com.liferay.portal.kernel.bean.BeanParamUtil" %><%@
 page import="com.liferay.portal.kernel.bean.BeanPropertiesUtil" %><%@
 page import="com.liferay.portal.kernel.cal.Recurrence" %><%@
@@ -75,8 +64,6 @@ page import="com.liferay.portal.kernel.model.impl.*" %><%@
 page import="com.liferay.portal.kernel.model.impl.VirtualLayout" %><%@
 page import="com.liferay.portal.kernel.portlet.InvokerPortlet" %><%@
 page import="com.liferay.portal.kernel.portlet.LiferayPortletMode" %><%@
-page import="com.liferay.portal.kernel.portlet.LiferayPortletRequest" %><%@
-page import="com.liferay.portal.kernel.portlet.LiferayPortletResponse" %><%@
 page import="com.liferay.portal.kernel.portlet.LiferayPortletURL" %><%@
 page import="com.liferay.portal.kernel.portlet.LiferayWindowState" %><%@
 page import="com.liferay.portal.kernel.portlet.PortletConfigFactoryUtil" %><%@
@@ -158,13 +145,13 @@ page import="com.liferay.portal.kernel.util.StringUtil" %><%@
 page import="com.liferay.portal.kernel.util.TextFormatter" %><%@
 page import="com.liferay.portal.kernel.util.Time" %><%@
 page import="com.liferay.portal.kernel.util.TimeZoneUtil" %><%@
+page import="com.liferay.portal.kernel.util.URLCodec" %><%@
 page import="com.liferay.portal.kernel.util.UnicodeFormatter" %><%@
 page import="com.liferay.portal.kernel.util.UnicodeProperties" %><%@
 page import="com.liferay.portal.kernel.util.Validator" %><%@
 page import="com.liferay.portal.kernel.util.WebKeys" %><%@
 page import="com.liferay.portal.kernel.util.comparator.PortletCategoryComparator" %><%@
 page import="com.liferay.portal.kernel.util.comparator.PortletTitleComparator" %><%@
-page import="com.liferay.portal.kernel.webserver.WebServerServletTokenUtil" %><%@
 page import="com.liferay.portal.kernel.workflow.WorkflowConstants" %><%@
 page import="com.liferay.portal.model.impl.*" %><%@
 page import="com.liferay.portal.plugin.PluginUtil" %><%@
@@ -172,7 +159,6 @@ page import="com.liferay.portal.security.sso.SSOUtil" %><%@
 page import="com.liferay.portal.service.*" %><%@
 page import="com.liferay.portal.struts.StrutsUtil" %><%@
 page import="com.liferay.portal.struts.TilesAttributeUtil" %><%@
-page import="com.liferay.portal.util.JavaScriptBundleUtil" %><%@
 page import="com.liferay.portal.util.LayoutDescription" %><%@
 page import="com.liferay.portal.util.PrefsPropsUtil" %><%@
 page import="com.liferay.portal.util.PropsUtil" %><%@
@@ -186,11 +172,8 @@ page import="com.liferay.portlet.RenderRequestFactory" %><%@
 page import="com.liferay.portlet.RenderRequestImpl" %><%@
 page import="com.liferay.portlet.RenderResponseFactory" %><%@
 page import="com.liferay.portlet.RenderResponseImpl" %><%@
-page import="com.liferay.portlet.asset.util.AssetUtil" %><%@
 page import="com.liferay.portlet.configuration.kernel.util.PortletConfigurationUtil" %><%@
 page import="com.liferay.portlet.usergroupsadmin.search.UserGroupDisplayTerms" %><%@
-page import="com.liferay.portlet.usersadmin.search.GroupSearch" %><%@
-page import="com.liferay.portlet.usersadmin.search.GroupSearchTerms" %><%@
 page import="com.liferay.portlet.usersadmin.search.OrganizationDisplayTerms" %><%@
 page import="com.liferay.portlet.usersadmin.search.OrganizationSearch" %><%@
 page import="com.liferay.portlet.usersadmin.search.OrganizationSearchTerms" %><%@
@@ -204,8 +187,6 @@ page import="com.liferay.taglib.search.ResultRow" %><%@
 page import="com.liferay.taglib.search.SearchEntry" %><%@
 page import="com.liferay.taglib.search.TextSearchEntry" %><%@
 page import="com.liferay.taglib.util.OutputTag" %><%@
-page import="com.liferay.trash.kernel.model.TrashEntry" %><%@
-page import="com.liferay.trash.kernel.util.TrashUtil" %><%@
 page import="com.liferay.users.admin.kernel.util.UsersAdmin" %><%@
 page import="com.liferay.users.admin.kernel.util.UsersAdminUtil" %><%@
 page import="com.liferay.util.Encryptor" %>
@@ -224,7 +205,6 @@ page import="java.util.Collections" %><%@
 page import="java.util.Date" %><%@
 page import="java.util.HashMap" %><%@
 page import="java.util.HashSet" %><%@
-page import="java.util.Iterator" %><%@
 page import="java.util.LinkedHashMap" %><%@
 page import="java.util.LinkedHashSet" %><%@
 page import="java.util.List" %><%@
@@ -253,3 +233,5 @@ page import="javax.portlet.WindowState" %>
 <liferay-theme:defineObjects />
 
 <%@ include file="/html/common/init-ext.jsp" %>
+
+<%@ include file="/html/common/init-compat.jsp" %>

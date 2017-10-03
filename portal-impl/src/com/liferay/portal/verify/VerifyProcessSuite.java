@@ -25,7 +25,6 @@ public class VerifyProcessSuite extends VerifyProcess {
 
 		verify(new VerifyDB2());
 		verify(new VerifyMySQL());
-		verify(new VerifyOracle());
 		verify(new VerifySQLServer());
 
 		verify(new VerifyUUID());
@@ -34,12 +33,9 @@ public class VerifyProcessSuite extends VerifyProcess {
 		verify(new VerifyGroup());
 		verify(new VerifyRole());
 
-		verify(new VerifyAsset());
 		verify(new VerifyAuditedModel());
 		verify(new VerifyGroupedModel());
 		verify(new VerifyLayout());
-		verify(new VerifyMessageBoards());
-		verify(new VerifyOrganization());
 		verify(new VerifyRatings());
 		verify(new VerifyResourceActions());
 		verify(new VerifyResourcePermissions());

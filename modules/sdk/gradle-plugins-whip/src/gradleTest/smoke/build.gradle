@@ -13,8 +13,6 @@ dependencies {
 }
 
 repositories {
-	mavenLocal()
-
 	maven {
 		url "https://cdn.lfrs.sl/repository.liferay.com/nexus/content/groups/public"
 	}
@@ -33,4 +31,8 @@ test {
 		excludes = ['.*Test', '.*Test\\$.*', '.*\\$Proxy.*', 'com/liferay/whip/.*']
 		includes = ['com/example/.*']
 	}
+}
+
+whip {
+	version = "1.0.1"
 }
