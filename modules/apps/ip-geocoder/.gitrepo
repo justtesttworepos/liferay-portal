@@ -2,8 +2,10 @@
 ; Do not manually edit this file.
 ;
 [subrepo]
+	autopull = false
 	cmdver = liferay
-	commit = c4a75869aa2f7d91be79c72a2618cfb138de1917
+	commit = 28b2baac00f1e96159bdaa2711b5a2b1fb337a9b
+	mergebuttonmergecommits = false
 	mode = push
-	parent = e735d416a15ead701644123c786a33eaf7d457b7
+	parent = c893c272f2e20e7f65e18702e0680c8c8ad67cbd
 	remote = git@github.com:liferay/com-liferay-ip-geocoder.git

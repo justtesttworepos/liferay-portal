@@ -14,32 +14,32 @@
 
 package com.liferay.blogs.verify;
 
-import com.liferay.blogs.kernel.model.BlogsEntry;
+import com.liferay.blogs.internal.verify.model.BlogsEntryVerifiableModel;
+import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.service.BlogsEntryLocalService;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.LoggingTimer;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.verify.VerifyProcess;
+import com.liferay.portal.verify.VerifyResourcePermissions;
 
 import java.util.List;
 
-import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * @author Raymond Augé
+ * @author     Raymond Augé
+ * @deprecated As of 1.1.0, replaced by {@link
+ *             com.liferay.blogs.internal.verify.BlogsServiceVerifyProcess}
  */
-@Component(
-	immediate = true,
-	property = {"verify.process.name=com.liferay.blogs.service"},
-	service = VerifyProcess.class
-)
+@Deprecated
 public class BlogsServiceVerifyProcess extends VerifyProcess {
 
 	@Override
 	protected void doVerify() throws Exception {
 		updateEntryAssets();
+		verifyResourcedModels();
 		verifyStatus();
 	}
 
@@ -80,6 +80,12 @@ public class BlogsServiceVerifyProcess extends VerifyProcess {
 		}
 	}
 
+	protected void verifyResourcedModels() throws Exception {
+		try (LoggingTimer loggingTimer = new LoggingTimer()) {
+			_verifyResourcePermissions.verify(new BlogsEntryVerifiableModel());
+		}
+	}
+
 	protected void verifyStatus() throws Exception {
 		try (LoggingTimer loggingTimer = new LoggingTimer()) {
 			runSQL(
@@ -93,5 +99,7 @@ public class BlogsServiceVerifyProcess extends VerifyProcess {
 		BlogsServiceVerifyProcess.class);
 
 	private BlogsEntryLocalService _blogsEntryLocalService;
+	private final VerifyResourcePermissions _verifyResourcePermissions =
+		new VerifyResourcePermissions();
 
 }

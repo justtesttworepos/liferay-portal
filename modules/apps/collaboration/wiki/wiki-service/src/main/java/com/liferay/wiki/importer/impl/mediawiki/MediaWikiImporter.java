@@ -16,6 +16,7 @@ package com.liferay.wiki.importer.impl.mediawiki;
 
 import com.liferay.asset.kernel.model.AssetTag;
 import com.liferay.asset.kernel.service.AssetTagLocalService;
+import com.liferay.asset.util.impl.AssetUtil;
 import com.liferay.document.library.kernel.store.DLStoreUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
@@ -44,7 +45,6 @@ import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
 import com.liferay.portal.kernel.zip.ZipReader;
 import com.liferay.portal.kernel.zip.ZipReaderFactoryUtil;
-import com.liferay.portlet.asset.util.AssetUtil;
 import com.liferay.wiki.configuration.WikiGroupServiceConfiguration;
 import com.liferay.wiki.engine.impl.WikiEngineRenderer;
 import com.liferay.wiki.exception.ImportFilesException;
@@ -137,10 +137,11 @@ public class MediaWikiImporter implements WikiImporter {
 			moveFrontPage(userId, node, options);
 		}
 		catch (DocumentException de) {
-			throw new ImportFilesException("Invalid XML file provided");
+			throw new ImportFilesException("Invalid XML file provided", de);
 		}
 		catch (IOException ioe) {
-			throw new ImportFilesException("Error reading the files provided");
+			throw new ImportFilesException(
+				"Error reading the files provided", ioe);
 		}
 		catch (PortalException pe) {
 			throw pe;
@@ -266,10 +267,14 @@ public class MediaWikiImporter implements WikiImporter {
 		try {
 			DLStoreUtil.validate(fileName, true, inputStream);
 		}
-		catch (PortalException pe) {
-			return false;
-		}
-		catch (SystemException se) {
+		catch (PortalException | SystemException e) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(e, e);
+			}
+
 			return false;
 		}
 
@@ -316,7 +321,7 @@ public class MediaWikiImporter implements WikiImporter {
 	}
 
 	protected String normalize(String categoryName, int length) {
-		categoryName = AssetUtil.toWord(categoryName.trim());
+		categoryName = _toWord(categoryName.trim());
 
 		return StringUtil.shorten(categoryName, length);
 	}
@@ -737,6 +742,28 @@ public class MediaWikiImporter implements WikiImporter {
 		_translator.setStrictImportMode(strictImportMode);
 
 		return _translator.translate(content);
+	}
+
+	private String _toWord(String text) {
+		if (Validator.isNull(text)) {
+			return text;
+		}
+
+		char[] textCharArray = text.toCharArray();
+
+		for (int i = 0; i < textCharArray.length; i++) {
+			char c = textCharArray[i];
+
+			for (char invalidChar : AssetUtil.INVALID_CHARACTERS) {
+				if (c == invalidChar) {
+					textCharArray[i] = CharPool.SPACE;
+
+					break;
+				}
+			}
+		}
+
+		return new String(textCharArray);
 	}
 
 	private static final String _WORK_IN_PROGRESS = "{{Work in progress}}";

@@ -25,7 +25,7 @@
 </tr>
 <tr>
 	<td>PERMISSIONS_CHECKBOX</td>
-	<td>//tr[contains(.,'${key_roleName}')]//input[@value='${key_permissionDefinitionKey}']</td>
+	<td>//tr[contains(.,'${key_roleTitle}')]//input[@value='${key_permissionDefinitionKey}']</td>
 	<td></td>
 </tr>
 <tr>
@@ -121,6 +121,16 @@
 <tr>
 	<td>OWNER_VIEW_CHECKBOX</td>
 	<td>//input[@id='owner_ACTION_VIEW']</td>
+	<td></td>
+</tr>
+<tr>
+	<td></td>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td>ROLE_LINK</td>
+	<td>//div[contains(@class,'edit-permissions')]//td/a[normalize-space(.//text())='${key_roleName}']</td>
 	<td></td>
 </tr>
 <tr>

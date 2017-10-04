@@ -20,6 +20,7 @@ import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.model.DDMTemplate;
 import com.liferay.dynamic.data.mapping.service.DDMStructureLocalServiceUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.PortletProvider;
@@ -27,6 +28,7 @@ import com.liferay.portal.kernel.portlet.PortletProviderUtil;
 import com.liferay.portal.kernel.template.TemplateConstants;
 import com.liferay.portal.kernel.template.TemplateHandler;
 import com.liferay.portal.kernel.template.TemplateHandlerRegistryUtil;
+import com.liferay.portal.kernel.theme.PortletDisplay;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.AggregateResourceBundle;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -39,6 +41,7 @@ import com.liferay.portal.kernel.util.ResourceBundleUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +51,8 @@ import java.util.Set;
 
 import javax.portlet.PortletRequest;
 import javax.portlet.PortletURL;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
@@ -63,14 +68,17 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 		return "Liferay.FormBuilder.AVAILABLE_FIELDS.DDM_STRUCTURE";
 	}
 
+	@Override
 	public String getConfirmSelectStructureMessage(Locale locale) {
 		return StringPool.BLANK;
 	}
 
+	@Override
 	public String getConfirmSelectTemplateMessage(Locale locale) {
 		return StringPool.BLANK;
 	}
 
+	@Override
 	public DDMNavigationHelper getDDMNavigationHelper() {
 		return new DDMNavigationHelperImpl();
 	}
@@ -194,12 +202,24 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 			ThemeDisplay themeDisplay, boolean includeAncestorTemplates)
 		throws Exception {
 
-		if (includeAncestorTemplates) {
-			return PortalUtil.getCurrentAndAncestorSiteGroupIds(
-				themeDisplay.getScopeGroupId());
+		HttpServletRequest request = themeDisplay.getRequest();
+
+		PortletDisplay portletDisplay = themeDisplay.getPortletDisplay();
+
+		long groupId = themeDisplay.getScopeGroupId();
+
+		String refererPortletName = ParamUtil.getString(
+			request, portletDisplay.getNamespace() + "refererPortletName");
+
+		if (Validator.isNull(refererPortletName)) {
+			groupId = PortalUtil.getScopeGroupId(request, refererPortletName);
 		}
 
-		return new long[] {themeDisplay.getScopeGroupId()};
+		if (includeAncestorTemplates) {
+			return PortalUtil.getCurrentAndAncestorSiteGroupIds(groupId);
+		}
+
+		return new long[] {groupId};
 	}
 
 	@Override
@@ -343,6 +363,24 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 	}
 
 	@Override
+	public boolean isShowAddButton(Group scopeGroup) {
+		String portletId = getPortletId();
+
+		String ddmStructurePortletId = PortletProviderUtil.getPortletId(
+			DDMStructure.class.getName(), PortletProvider.Action.VIEW);
+
+		if (portletId.equals(ddmStructurePortletId)) {
+			return false;
+		}
+
+		if (!scopeGroup.hasLocalOrRemoteStagingGroup()) {
+			return true;
+		}
+
+		return scopeGroup.isStagingGroup();
+	}
+
+	@Override
 	public boolean isShowAddStructureButton() {
 		String portletId = getPortletId();
 
@@ -381,6 +419,10 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 		return false;
 	}
 
+	/**
+	 * @deprecated As of 3.6.0, with no direct replacement
+	 */
+	@Deprecated
 	protected ResourceBundle getBaseDDMDisplayResourceBundle(
 		String languageId) {
 
@@ -391,6 +433,10 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 			baseDDMDisplayClazz.getClassLoader());
 	}
 
+	/**
+	 * @deprecated As of 3.6.0, with no direct replacement
+	 */
+	@Deprecated
 	protected ResourceBundle getDDMDisplayResourceBundle(String languageId) {
 		Bundle bundle = FrameworkUtil.getBundle(getClass());
 
@@ -416,6 +462,10 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 		return LanguageUtil.get(locale, "templates");
 	}
 
+	/**
+	 * @deprecated As of 3.6.0, with no direct replacement
+	 */
+	@Deprecated
 	protected ResourceBundle getPortalResourceBundle(String languageId) {
 		ResourceBundleLoader portalResourceBundleLoader =
 			ResourceBundleLoaderUtil.getPortalResourceBundleLoader();
@@ -424,21 +474,37 @@ public abstract class BaseDDMDisplay implements DDMDisplay {
 	}
 
 	protected ResourceBundle getResourceBundle(Locale locale) {
-		String languageId = LocaleUtil.toLanguageId(locale);
+		Bundle bundle = FrameworkUtil.getBundle(getClass());
 
-		ResourceBundle ddmDisplayResourceBundle = getDDMDisplayResourceBundle(
-			languageId);
+		ResourceBundleLoader resourceBundleLoader =
+			ResourceBundleLoaderUtil.
+				getResourceBundleLoaderByBundleSymbolicName(
+					bundle.getSymbolicName());
+
+		ResourceBundle ddmDisplayResourceBundle = null;
+
+		if (resourceBundleLoader != null) {
+			ddmDisplayResourceBundle = resourceBundleLoader.loadResourceBundle(
+				locale);
+		}
+
+		ResourceBundle baseDDMDisplayResourceBundle =
+			ResourceBundleUtil.getBundle(
+				"content.Language", locale,
+				BaseDDMDisplay.class.getClassLoader());
+
+		ResourceBundleLoader portalResourceBundleLoader =
+			ResourceBundleLoaderUtil.getPortalResourceBundleLoader();
 
 		if (ddmDisplayResourceBundle == null) {
 			return new AggregateResourceBundle(
-				getBaseDDMDisplayResourceBundle(languageId),
-				getPortalResourceBundle(languageId));
+				baseDDMDisplayResourceBundle,
+				portalResourceBundleLoader.loadResourceBundle(locale));
 		}
 
 		return new AggregateResourceBundle(
-			ddmDisplayResourceBundle,
-			getBaseDDMDisplayResourceBundle(languageId),
-			getPortalResourceBundle(languageId));
+			ddmDisplayResourceBundle, baseDDMDisplayResourceBundle,
+			portalResourceBundleLoader.loadResourceBundle(locale));
 	}
 
 	protected String getViewTemplatesURL(

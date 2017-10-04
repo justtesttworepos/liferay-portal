@@ -26,8 +26,10 @@ import com.liferay.portal.kernel.util.Validator;
 import javax.servlet.http.HttpServletRequest;
 
 /**
- * @author Jorge Ferrer
+ * @author     Jorge Ferrer
+ * @deprecated As of 7.0.0, with no direct replacement
  */
+@Deprecated
 public class FacebookUtil {
 
 	public static final String FACEBOOK_APPS_URL = "http://apps.facebook.com/";

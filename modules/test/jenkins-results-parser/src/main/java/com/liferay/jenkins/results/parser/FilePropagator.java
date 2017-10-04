@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author Peter Yoo
@@ -174,9 +175,9 @@ public class FilePropagator {
 	}
 
 	private int _executeBashCommands(List<String> commands, String targetSlave)
-		throws InterruptedException, IOException {
+		throws InterruptedException, IOException, TimeoutException {
 
-		StringBuffer sb = new StringBuffer("ssh ");
+		StringBuffer sb = new StringBuffer("ssh -o NumberOfPasswordPrompts=0 ");
 
 		sb.append(targetSlave);
 		sb.append(" '");
@@ -205,7 +206,7 @@ public class FilePropagator {
 	private String _getMkdirCommand(String fileName) {
 		String dirName = fileName.substring(0, fileName.lastIndexOf("/") + 1);
 
-		return "mkdir -pv " + dirName;
+		return "mkdir -p " + dirName;
 	}
 
 	private final List<String> _busySlaves = new ArrayList<>();

@@ -15,6 +15,7 @@
 package com.liferay.exportimport.kernel.lar;
 
 import com.liferay.portal.kernel.model.Portlet;
+import com.liferay.portal.kernel.util.StringPool;
 
 import javax.portlet.PortletPreferences;
 
@@ -170,6 +171,10 @@ public interface PortletDataHandler {
 	public PortletDataHandlerControl[] getImportMetadataControls()
 		throws PortletDataException;
 
+	public default String getNamespace() {
+		return StringPool.BLANK;
+	}
+
 	public String getPortletId();
 
 	public int getRank();
@@ -233,7 +238,13 @@ public interface PortletDataHandler {
 	 */
 	public boolean isRollbackOnException();
 
-	public boolean isSupportsDataStrategyCopyAsNew();
+	public default boolean isSupportsDataStrategyCopyAsNew() {
+		return true;
+	}
+
+	public default boolean isSupportsDataStrategyMirrorWithOverwriting() {
+		return true;
+	}
 
 	public void prepareManifestSummary(PortletDataContext portletDataContext)
 		throws PortletDataException;

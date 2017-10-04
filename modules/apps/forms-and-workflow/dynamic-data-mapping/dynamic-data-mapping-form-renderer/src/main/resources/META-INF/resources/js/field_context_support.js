@@ -31,7 +31,7 @@ AUI.add(
 
 				instance._eventHandlers = [];
 
-				instance._repaintableAttributes = {};
+				instance._stateRepaintableAttributes = {};
 
 				instance.bindFieldClassAttributesStatus(fieldClass);
 			},
@@ -39,29 +39,46 @@ AUI.add(
 			bindFieldClassAttributesStatus: function(fieldClass) {
 				var instance = this;
 
-				var EXTENDS = fieldClass;
-
 				var context = instance.get('context');
 
-				var setAttributeChangeEvent = function(attributeName) {
-					if (EXTENDS.ATTRS[attributeName].state) {
-						instance._repaintableAttributes[attributeName] = true;
+				var setAttributeChangeEvent = function(attributes, attributeName) {
+					if (context.hasOwnProperty(attributeName)) {
+						var attributeValue = instance.get('value');
 
-						if (context[attributeName]) {
+						if (!Util.compare(attributeValue, context[attributeName])) {
 							instance.set(attributeName, context[attributeName]);
-						}
-						else {
-							context[attributeName] = instance.get(attributeName);
 						}
 
 						instance.after(attributeName + 'Change', A.bind(instance._afterAttributeChange, instance, attributeName));
 					}
+
+					instance._setStateRepaintableAttributeValue(attributeName, !!attributes[attributeName].state);
 				};
 
-				while (EXTENDS) {
-					AObject.keys(EXTENDS.ATTRS).forEach(setAttributeChangeEvent);
+				var classAttrs = instance.getAttrs();
 
-					EXTENDS = EXTENDS.EXTENDS;
+				AObject.keys(context).forEach(
+					function(attr) {
+						if (!classAttrs.hasOwnProperty(attr)) {
+							var config = {
+								state: true,
+								value: context[attr]
+							};
+
+							instance.addAttr(attr, config);
+							instance.after(attr + 'Change', A.bind(instance._afterAttributeChange, instance, attr));
+						}
+					}
+				);
+
+				var parentClass = fieldClass;
+
+				while (parentClass) {
+					var attrs = parentClass.ATTRS;
+
+					AObject.keys(attrs).forEach(A.bind(setAttributeChangeEvent, instance, attrs));
+
+					parentClass = parentClass.EXTENDS;
 				}
 
 				instance._eventHandlers.push(instance.after('contextChange', instance._afterContextChange));
@@ -72,7 +89,7 @@ AUI.add(
 
 				var context = instance.get('context');
 
-				return context && instance._repaintableAttributes[attributeName] && context.hasOwnProperty(attributeName);
+				return context && context.hasOwnProperty(attributeName) && instance._stateRepaintableAttributes[attributeName];
 			},
 
 			_afterAttributeChange: function(name) {
@@ -113,10 +130,24 @@ AUI.add(
 				}
 			},
 
+			_isStateRepaintableAttributeDefined: function(attributeName) {
+				var instance = this;
+
+				return instance._stateRepaintableAttributes.hasOwnProperty(attributeName);
+			},
+
 			_setContext: function(val) {
 				var instance = this;
 
 				return A.merge(instance.get('context'), val);
+			},
+
+			_setStateRepaintableAttributeValue: function(attributeName, value) {
+				var instance = this;
+
+				if (!instance._isStateRepaintableAttributeDefined(attributeName)) {
+					instance._stateRepaintableAttributes[attributeName] = value;
+				}
 			}
 		};
 

@@ -31,7 +31,6 @@ import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
@@ -41,6 +40,7 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
+import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -70,7 +70,8 @@ public class KBArticlePersistenceTest {
 	@Rule
 	public static final AggregateTestRule aggregateTestRule = new AggregateTestRule(new LiferayIntegrationTestRule(),
 			PersistenceTestRule.INSTANCE,
-			new TransactionalTestRule(Propagation.REQUIRED));
+			new TransactionalTestRule(Propagation.REQUIRED,
+				"com.liferay.knowledge.base.service"));
 
 	@Before
 	public void setUp() {
@@ -248,6 +249,13 @@ public class KBArticlePersistenceTest {
 	}
 
 	@Test
+	public void testCountByResourcePrimKey() throws Exception {
+		_persistence.countByResourcePrimKey(RandomTestUtil.nextLong());
+
+		_persistence.countByResourcePrimKey(0L);
+	}
+
+	@Test
 	public void testCountByUuid() throws Exception {
 		_persistence.countByUuid(StringPool.BLANK);
 
@@ -272,13 +280,6 @@ public class KBArticlePersistenceTest {
 		_persistence.countByUuid_C(StringPool.NULL, 0L);
 
 		_persistence.countByUuid_C((String)null, 0L);
-	}
-
-	@Test
-	public void testCountByResourcePrimKey() throws Exception {
-		_persistence.countByResourcePrimKey(RandomTestUtil.nextLong());
-
-		_persistence.countByResourcePrimKey(0L);
 	}
 
 	@Test

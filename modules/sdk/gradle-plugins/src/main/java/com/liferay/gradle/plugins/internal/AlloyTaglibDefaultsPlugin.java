@@ -21,6 +21,7 @@ import com.liferay.gradle.plugins.alloy.taglib.BuildTaglibsTask;
 import com.liferay.gradle.plugins.internal.util.GradleUtil;
 
 import org.gradle.api.Action;
+import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaPlugin;
@@ -31,6 +32,11 @@ import org.gradle.api.tasks.TaskContainer;
  */
 public class AlloyTaglibDefaultsPlugin
 	extends BasePortalToolDefaultsPlugin<AlloyTaglibPlugin> {
+
+	public static final Plugin<Project> INSTANCE =
+		new AlloyTaglibDefaultsPlugin();
+
+	public static final String PORTAL_TOOL_NAME = "alloy-taglib";
 
 	protected Configuration addPortalToolConfiguration(final Project project) {
 		final Configuration configuration = GradleUtil.addConfiguration(
@@ -83,31 +89,7 @@ public class AlloyTaglibDefaultsPlugin
 
 		super.configureDefaults(project, alloyTaglibPlugin);
 
-		configureTasksBuildTaglibs(project);
-	}
-
-	protected void configureTaskBuildTaglibs(
-		BuildTaglibsTask buildTaglibsTask) {
-
-		Configuration configuration = GradleUtil.getConfiguration(
-			buildTaglibsTask.getProject(), getPortalToolConfigurationName());
-
-		buildTaglibsTask.setClasspath(configuration);
-	}
-
-	protected void configureTasksBuildTaglibs(Project project) {
-		TaskContainer taskContainer = project.getTasks();
-
-		taskContainer.withType(
-			BuildTaglibsTask.class,
-			new Action<BuildTaglibsTask>() {
-
-				@Override
-				public void execute(BuildTaglibsTask buildTaglibsTask) {
-					configureTaskBuildTaglibs(buildTaglibsTask);
-				}
-
-			});
+		_configureTasksBuildTaglibs(project);
 	}
 
 	@Override
@@ -121,12 +103,43 @@ public class AlloyTaglibDefaultsPlugin
 	}
 
 	@Override
+	protected String getPortalToolGroup() {
+		return _PORTAL_TOOL_GROUP;
+	}
+
+	@Override
 	protected String getPortalToolName() {
-		return _PORTAL_TOOL_NAME;
+		return PORTAL_TOOL_NAME;
+	}
+
+	private AlloyTaglibDefaultsPlugin() {
+	}
+
+	private void _configureTaskBuildTaglibs(BuildTaglibsTask buildTaglibsTask) {
+		Configuration configuration = GradleUtil.getConfiguration(
+			buildTaglibsTask.getProject(), getPortalToolConfigurationName());
+
+		buildTaglibsTask.setClasspath(configuration);
+	}
+
+	private void _configureTasksBuildTaglibs(Project project) {
+		TaskContainer taskContainer = project.getTasks();
+
+		taskContainer.withType(
+			BuildTaglibsTask.class,
+			new Action<BuildTaglibsTask>() {
+
+				@Override
+				public void execute(BuildTaglibsTask buildTaglibsTask) {
+					_configureTaskBuildTaglibs(buildTaglibsTask);
+				}
+
+			});
 	}
 
 	private static final String _PORTAL_TOOL_CONFIGURATION_NAME = "alloyTaglib";
 
-	private static final String _PORTAL_TOOL_NAME = "com.liferay.alloy.taglib";
+	private static final String _PORTAL_TOOL_GROUP =
+		"com.liferay.alloy-taglibs";
 
 }

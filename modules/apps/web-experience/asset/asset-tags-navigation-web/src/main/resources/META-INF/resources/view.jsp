@@ -23,7 +23,7 @@ if (showAssetCount && (classNameId > 0)) {
 	assetTags = AssetTagServiceUtil.getTags(scopeGroupId, classNameId, null, 0, maxAssetTags, new AssetTagCountComparator());
 }
 else {
-	assetTags = AssetTagServiceUtil.getGroupTags(themeDisplay.getSiteGroupId(), 0, maxAssetTags, new AssetTagCountComparator());
+	assetTags = AssetTagServiceUtil.getGroupTags(scopeGroupId, 0, maxAssetTags, new AssetTagCountComparator());
 }
 
 assetTags = ListUtil.sort(assetTags);
@@ -34,7 +34,7 @@ contextObjects.put("scopeGroupId", Long.valueOf(scopeGroupId));
 %>
 
 <liferay-ddm:template-renderer className="<%= AssetTag.class.getName() %>" contextObjects="<%= contextObjects %>" displayStyle="<%= displayStyle %>" displayStyleGroupId="<%= displayStyleGroupId %>" entries="<%= assetTags %>">
-	<liferay-ui:asset-tags-navigation
+	<liferay-asset:asset-tags-navigation
 		classNameId="<%= classNameId %>"
 		displayStyle="<%= displayStyle %>"
 		hidePortletWhenEmpty="<%= true %>"

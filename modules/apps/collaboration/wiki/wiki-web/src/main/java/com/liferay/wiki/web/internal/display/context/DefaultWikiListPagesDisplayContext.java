@@ -22,6 +22,8 @@ import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.language.LanguageUtil;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.LiferayWindowState;
@@ -34,7 +36,6 @@ import com.liferay.portal.kernel.search.SearchResult;
 import com.liferay.portal.kernel.search.SearchResultUtil;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
-import com.liferay.portal.kernel.service.SubscriptionLocalServiceUtil;
 import com.liferay.portal.kernel.servlet.taglib.ui.DeleteMenuItem;
 import com.liferay.portal.kernel.servlet.taglib.ui.JavaScriptMenuItem;
 import com.liferay.portal.kernel.servlet.taglib.ui.Menu;
@@ -51,9 +52,10 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.subscription.service.SubscriptionLocalServiceUtil;
 import com.liferay.taglib.search.ResultRow;
 import com.liferay.taglib.security.PermissionsURLTag;
-import com.liferay.trash.kernel.util.TrashUtil;
+import com.liferay.trash.TrashHelper;
 import com.liferay.wiki.configuration.WikiGroupServiceConfiguration;
 import com.liferay.wiki.configuration.WikiGroupServiceOverriddenConfiguration;
 import com.liferay.wiki.constants.WikiWebKeys;
@@ -91,10 +93,11 @@ public class DefaultWikiListPagesDisplayContext
 
 	public DefaultWikiListPagesDisplayContext(
 		HttpServletRequest request, HttpServletResponse response,
-		WikiNode wikiNode) {
+		WikiNode wikiNode, TrashHelper trashHelper) {
 
 		_request = request;
 		_wikiNode = wikiNode;
+		_trashHelper = trashHelper;
 
 		_wikiRequestHelper = new WikiRequestHelper(request);
 	}
@@ -274,6 +277,12 @@ public class DefaultWikiListPagesDisplayContext
 							curPage.getResourcePrimKey(), false);
 					}
 					catch (PortalException pe) {
+
+						// LPS-52675
+
+						if (_log.isDebugEnabled()) {
+							_log.debug(pe, pe);
+						}
 					}
 
 					if ((lastPage != null) &&
@@ -423,7 +432,8 @@ public class DefaultWikiListPagesDisplayContext
 			List<MenuItem> menuItems, WikiPage wikiPage)
 		throws PortalException {
 
-		if (!WikiNodePermissionChecker.contains(
+		if (Validator.isNull(wikiPage.getContent()) ||
+			!WikiNodePermissionChecker.contains(
 				_wikiRequestHelper.getPermissionChecker(), wikiPage.getNodeId(),
 				ActionKeys.ADD_PAGE)) {
 
@@ -497,7 +507,8 @@ public class DefaultWikiListPagesDisplayContext
 
 			deleteMenuItem.setKey(WikiUIItemKeys.DELETE);
 			deleteMenuItem.setTrash(
-				TrashUtil.isTrashEnabled(_wikiRequestHelper.getScopeGroupId()));
+				_trashHelper.isTrashEnabled(
+					_wikiRequestHelper.getScopeGroupId()));
 
 			LiferayPortletResponse liferayPortletResponse =
 				_wikiRequestHelper.getLiferayPortletResponse();
@@ -509,7 +520,7 @@ public class DefaultWikiListPagesDisplayContext
 
 			String cmd = Constants.DELETE;
 
-			if (TrashUtil.isTrashEnabled(
+			if (_trashHelper.isTrashEnabled(
 					_wikiRequestHelper.getScopeGroupId())) {
 
 				cmd = Constants.MOVE_TO_TRASH;
@@ -799,7 +810,11 @@ public class DefaultWikiListPagesDisplayContext
 	private static final UUID _UUID = UUID.fromString(
 		"628C435B-DB39-4E46-91DF-CEA763CF79F5");
 
+	private static final Log _log = LogFactoryUtil.getLog(
+		DefaultWikiListPagesDisplayContext.class);
+
 	private final HttpServletRequest _request;
+	private final TrashHelper _trashHelper;
 	private final WikiNode _wikiNode;
 	private final WikiRequestHelper _wikiRequestHelper;
 

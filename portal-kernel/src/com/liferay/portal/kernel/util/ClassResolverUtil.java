@@ -40,6 +40,10 @@ public class ClassResolverUtil {
 		}
 	}
 
+	/**
+	 * @deprecated As of 7.0.0, with no direct replacement
+	 */
+	@Deprecated
 	public static Class<?> resolveByContextClassLoader(String className) {
 		Thread thread = Thread.currentThread();
 
@@ -53,6 +57,10 @@ public class ClassResolverUtil {
 		}
 	}
 
+	/**
+	 * @deprecated As of 7.0.0, with no direct replacement
+	 */
+	@Deprecated
 	public static Class<?> resolveByPortalClassLoader(String className) {
 		ClassLoader portalClassLoader = PortalClassLoaderUtil.getClassLoader();
 
@@ -64,6 +72,10 @@ public class ClassResolverUtil {
 		}
 	}
 
+	/**
+	 * @deprecated As of 7.0.0, with no direct replacement
+	 */
+	@Deprecated
 	public static Class<?> resolveByPortletClassLoader(
 		String className, String servletContextName) {
 
@@ -85,11 +97,11 @@ public class ClassResolverUtil {
 		_primitiveClasses.put("boolean", boolean.class);
 		_primitiveClasses.put("byte", byte.class);
 		_primitiveClasses.put("char", char.class);
-		_primitiveClasses.put("short", short.class);
+		_primitiveClasses.put("double", double.class);
+		_primitiveClasses.put("float", float.class);
 		_primitiveClasses.put("int", int.class);
 		_primitiveClasses.put("long", long.class);
-		_primitiveClasses.put("float", float.class);
-		_primitiveClasses.put("double", double.class);
+		_primitiveClasses.put("short", short.class);
 		_primitiveClasses.put("void", void.class);
 	}
 

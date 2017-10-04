@@ -16,11 +16,11 @@ package com.liferay.blogs.web.asset;
 
 import com.liferay.asset.kernel.model.AssetRendererFactory;
 import com.liferay.asset.kernel.model.BaseJSPAssetRenderer;
-import com.liferay.blogs.kernel.model.BlogsEntry;
+import com.liferay.asset.util.impl.AssetUtil;
+import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.service.permission.BlogsEntryPermission;
 import com.liferay.blogs.web.constants.BlogsPortletKeys;
 import com.liferay.blogs.web.internal.util.BlogsEntryUtil;
-import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
@@ -38,7 +38,6 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.util.PropsValues;
-import com.liferay.portlet.asset.util.AssetUtil;
 
 import java.util.Date;
 import java.util.Locale;
@@ -62,8 +61,8 @@ public class BlogsEntryAssetRenderer
 	extends BaseJSPAssetRenderer<BlogsEntry> implements TrashRenderer {
 
 	/**
-	 * @deprecated As of 1.0.0, replaced by {@link #BlogsEntryAssetRenderer(
-	 *             BlogsEntry, ResourceBundleLoader)}
+	 * @deprecated As of 1.0.0, replaced by {@link
+	 *             #BlogsEntryAssetRenderer(BlogsEntry, ResourceBundleLoader)}
 	 */
 	@Deprecated
 	public BlogsEntryAssetRenderer(BlogsEntry entry) {
@@ -171,8 +170,7 @@ public class BlogsEntryAssetRenderer
 	@Override
 	public String getTitle(Locale locale) {
 		ResourceBundle resourceBundle =
-			_resourceBundleLoader.loadResourceBundle(
-				LanguageUtil.getLanguageId(locale));
+			_resourceBundleLoader.loadResourceBundle(locale);
 
 		return BlogsEntryUtil.getDisplayTitle(resourceBundle, _entry);
 	}

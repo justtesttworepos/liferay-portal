@@ -17,6 +17,8 @@ package com.liferay.gradle.plugins.internal;
 import com.liferay.gradle.plugins.BaseDefaultsPlugin;
 import com.liferay.gradle.plugins.internal.util.FileUtil;
 import com.liferay.gradle.plugins.internal.util.GradleUtil;
+import com.liferay.gradle.plugins.node.NodePlugin;
+import com.liferay.gradle.plugins.node.tasks.NpmInstallTask;
 
 import groovy.lang.Closure;
 
@@ -25,6 +27,7 @@ import java.io.File;
 import java.util.Set;
 
 import org.gradle.api.Action;
+import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.XmlProvider;
@@ -45,59 +48,74 @@ import org.w3c.dom.NodeList;
  */
 public class IdeaDefaultsPlugin extends BaseDefaultsPlugin<IdeaPlugin> {
 
+	public static final Plugin<Project> INSTANCE = new IdeaDefaultsPlugin();
+
 	@Override
 	protected void configureDefaults(
 		Project project, final IdeaPlugin ideaPlugin) {
 
-		configureIdeaModuleIml(project, ideaPlugin);
-		configureTaskIdea(project, ideaPlugin);
+		_configureIdeaModuleIml(project, ideaPlugin);
+		_configureTaskIdea(ideaPlugin);
 
 		project.afterEvaluate(
 			new Action<Project>() {
 
 				@Override
 				public void execute(Project project) {
-					configureIdeaModuleExcludeDirs(project, ideaPlugin);
+					_configureIdeaModuleExcludeDirs(project, ideaPlugin);
 				}
 
 			});
 	}
 
-	protected void configureIdeaModuleExcludeDirs(
+	@Override
+	protected Class<IdeaPlugin> getPluginClass() {
+		return IdeaPlugin.class;
+	}
+
+	private IdeaDefaultsPlugin() {
+	}
+
+	private void _configureIdeaModuleExcludeDirs(
 		Project project, IdeaPlugin ideaPlugin) {
 
-		if (!GradleUtil.hasPlugin(project, JavaPlugin.class)) {
-			return;
-		}
-
-		IdeaModule ideaModule = getIdeaModule(ideaPlugin);
+		IdeaModule ideaModule = _getIdeaModule(ideaPlugin);
 
 		Set<File> excludeDirs = ideaModule.getExcludeDirs();
 
-		SourceSet sourceSet = GradleUtil.getSourceSet(
-			project, SourceSet.MAIN_SOURCE_SET_NAME);
+		if (GradleUtil.hasPlugin(project, JavaPlugin.class)) {
+			SourceSet sourceSet = GradleUtil.getSourceSet(
+				project, SourceSet.MAIN_SOURCE_SET_NAME);
 
-		SourceSetOutput sourceSetOutput = sourceSet.getOutput();
+			SourceSetOutput sourceSetOutput = sourceSet.getOutput();
 
-		File classesDir = sourceSetOutput.getClassesDir();
+			File classesDir = sourceSetOutput.getClassesDir();
 
-		if (!FileUtil.isChild(classesDir, project.getBuildDir())) {
-			excludeDirs.add(classesDir);
+			if (!FileUtil.isChild(classesDir, project.getBuildDir())) {
+				excludeDirs.add(classesDir);
+			}
+
+			File resourcesDir = sourceSetOutput.getResourcesDir();
+
+			if (!FileUtil.isChild(resourcesDir, project.getBuildDir())) {
+				excludeDirs.add(resourcesDir);
+			}
 		}
 
-		File resourcesDir = sourceSetOutput.getResourcesDir();
+		if (GradleUtil.hasPlugin(project, NodePlugin.class)) {
+			NpmInstallTask npmInstallTask = (NpmInstallTask)GradleUtil.getTask(
+				project, NodePlugin.NPM_INSTALL_TASK_NAME);
 
-		if (!FileUtil.isChild(resourcesDir, project.getBuildDir())) {
-			excludeDirs.add(resourcesDir);
+			excludeDirs.add(npmInstallTask.getNodeModulesDir());
 		}
 
 		ideaModule.setExcludeDirs(excludeDirs);
 	}
 
-	protected void configureIdeaModuleIml(
+	private void _configureIdeaModuleIml(
 		final Project project, IdeaPlugin ideaPlugin) {
 
-		IdeaModule ideaModule = getIdeaModule(ideaPlugin);
+		IdeaModule ideaModule = _getIdeaModule(ideaPlugin);
 
 		IdeaModuleIml ideaModuleIml = ideaModule.getIml();
 
@@ -168,36 +186,18 @@ public class IdeaDefaultsPlugin extends BaseDefaultsPlugin<IdeaPlugin> {
 		ideaModuleIml.withXml(closure);
 	}
 
-	protected void configureTaskIdea(Project project, IdeaPlugin ideaPlugin) {
+	private void _configureTaskIdea(IdeaPlugin ideaPlugin) {
 		Task task = ideaPlugin.getLifecycleTask();
 
 		task.dependsOn(ideaPlugin.getCleanTask());
 	}
 
-	protected File getClassesDir(Project project) {
-		if (!GradleUtil.hasPlugin(project, JavaPlugin.class)) {
-			return null;
-		}
-
-		SourceSet sourceSet = GradleUtil.getSourceSet(
-			project, SourceSet.MAIN_SOURCE_SET_NAME);
-
-		SourceSetOutput sourceSetOutput = sourceSet.getOutput();
-
-		return sourceSetOutput.getClassesDir();
-	}
-
-	protected IdeaModule getIdeaModule(IdeaPlugin ideaPlugin) {
+	private IdeaModule _getIdeaModule(IdeaPlugin ideaPlugin) {
 		IdeaModel ideaModel = ideaPlugin.getModel();
 
 		IdeaModule ideaModule = ideaModel.getModule();
 
 		return ideaModule;
-	}
-
-	@Override
-	protected Class<IdeaPlugin> getPluginClass() {
-		return IdeaPlugin.class;
 	}
 
 }

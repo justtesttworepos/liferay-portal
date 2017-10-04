@@ -15,9 +15,11 @@
 package com.liferay.blogs.internal.exportimport.data.handler.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
-import com.liferay.blogs.kernel.model.BlogsEntry;
+import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.service.BlogsEntryLocalServiceUtil;
+import com.liferay.blogs.test.util.BlogsTestUtil;
 import com.liferay.exportimport.kernel.lar.StagedModelDataHandlerUtil;
+import com.liferay.exportimport.test.util.lar.BaseWorkflowedStagedModelDataHandlerTestCase;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.StagedModel;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepositoryUtil;
@@ -28,7 +30,6 @@ import com.liferay.portal.kernel.servlet.taglib.ui.ImageSelector;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.test.rule.SynchronousDestinationTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -36,9 +37,8 @@ import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.lar.test.BaseWorkflowedStagedModelDataHandlerTestCase;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
-import com.liferay.portlet.blogs.util.test.BlogsTestUtil;
+import com.liferay.portal.test.rule.PermissionCheckerTestRule;
 
 import java.io.InputStream;
 
@@ -68,8 +68,8 @@ public class BlogsEntryStagedModelDataHandlerTest
 	public static final AggregateTestRule aggregateTestRule =
 		new AggregateTestRule(
 			new LiferayIntegrationTestRule(),
-			SynchronousDestinationTestRule.INSTANCE,
-			TransactionalTestRule.INSTANCE);
+			PermissionCheckerTestRule.INSTANCE,
+			SynchronousDestinationTestRule.INSTANCE);
 
 	@Test
 	public void testImportedCoverImage() throws Exception {
@@ -94,6 +94,8 @@ public class BlogsEntryStagedModelDataHandlerTest
 				importedEntry.getCoverImageFileEntryId());
 
 		Folder coverImageFileEntryFolder = coverImageFileEntry.getFolder();
+
+		_assertOriginalImage(coverImageFileEntry);
 
 		Assert.assertEquals(
 			liveGroup.getGroupId(), coverImageFileEntry.getGroupId());
@@ -127,6 +129,8 @@ public class BlogsEntryStagedModelDataHandlerTest
 				importedEntry.getSmallImageFileEntryId());
 
 		Folder smallImageFileEntryFolder = smallImageFileEntry.getFolder();
+
+		_assertOriginalImage(smallImageFileEntry);
 
 		Assert.assertEquals(
 			liveGroup.getGroupId(), smallImageFileEntry.getGroupId());
@@ -291,6 +295,25 @@ public class BlogsEntryStagedModelDataHandlerTest
 		Assert.assertEquals(
 			entry.getCoverImageCaption(), importedEntry.getCoverImageCaption());
 		Assert.assertEquals(entry.isSmallImage(), importedEntry.isSmallImage());
+	}
+
+	private void _assertOriginalImage(FileEntry imageFileEntry)
+		throws Exception {
+
+		Folder attachmentsFolder =
+			BlogsEntryLocalServiceUtil.addAttachmentsFolder(
+				TestPropsValues.getUserId(), liveGroup.getGroupId());
+
+		List<FileEntry> attachments =
+			PortletFileRepositoryUtil.getPortletFileEntries(
+				liveGroup.getGroupId(), attachmentsFolder.getFolderId());
+
+		Assert.assertEquals(attachments.toString(), 1, attachments.size());
+
+		FileEntry originalFileEntry = attachments.get(0);
+
+		Assert.assertEquals(
+			imageFileEntry.getFileName(), originalFileEntry.getFileName());
 	}
 
 	private static final String _IMAGE_CROP_REGION =

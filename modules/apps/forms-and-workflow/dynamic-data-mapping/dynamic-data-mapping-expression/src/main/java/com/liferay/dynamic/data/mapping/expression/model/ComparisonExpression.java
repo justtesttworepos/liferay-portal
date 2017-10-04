@@ -23,14 +23,15 @@ import aQute.bnd.annotation.ProviderType;
 public class ComparisonExpression extends BinaryExpression {
 
 	public ComparisonExpression(
-		String operator, Expression leftOperand, Expression rightOperand) {
+		String operator, Expression leftOperandExpression,
+		Expression rightOperandExpression) {
 
-		super(operator, leftOperand, rightOperand);
+		super(operator, leftOperandExpression, rightOperandExpression);
 	}
 
 	@Override
-	public <T> T accept(ExpressionVisitor<T> visitor) {
-		return visitor.visit(this);
+	public <T> T accept(ExpressionVisitor<T> expressionVisitor) {
+		return expressionVisitor.visit(this);
 	}
 
 }

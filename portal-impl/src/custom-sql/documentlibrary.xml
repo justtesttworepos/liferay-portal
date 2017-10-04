@@ -46,7 +46,8 @@
 				(DLFileEntry.repositoryId = ?) AND
 				([$STATUS$])
 		]]>
-	</sql><sql id="com.liferay.document.library.kernel.service.persistence.DLFileEntryFinder.countByG_U_F">
+	</sql>
+	<sql id="com.liferay.document.library.kernel.service.persistence.DLFileEntryFinder.countByG_U_F">
 		<![CDATA[
 			SELECT
 				COUNT(DISTINCT DLFileEntry.fileEntryId) AS COUNT_VALUE
@@ -58,6 +59,18 @@
 			WHERE
 				(DLFileVersion.groupId = ?) AND
 				(DLFileVersion.userId = ?) AND
+				([$STATUS$])
+				[$FOLDER_ID$]
+		]]>
+	</sql>
+	<sql id="com.liferay.document.library.kernel.service.persistence.DLFileEntryFinder.countByG_F_S">
+		<![CDATA[
+			SELECT
+				COUNT(DISTINCT DLFileVersion.fileEntryId) AS COUNT_VALUE
+			FROM
+				DLFileVersion
+			WHERE
+				(DLFileVersion.groupId = ?) AND
 				([$STATUS$])
 				[$FOLDER_ID$]
 		]]>
@@ -136,6 +149,7 @@
 				DLFileEntry
 			LEFT JOIN
 				AssetEntry ON
+					(AssetEntry.classNameId = ?) AND
 					(AssetEntry.classPK = DLFileEntry.fileEntryId)
 			WHERE
 				(AssetEntry.classPK IS NULL)
@@ -188,6 +202,20 @@
 				) TEMP_TABLE
 				INNER JOIN
 					DLFileEntry ON TEMP_TABLE.fileEntryId = DLFileEntry.fileEntryId
+		]]>
+	</sql>
+	<sql id="com.liferay.document.library.kernel.service.persistence.DLFileEntryFinder.findByC_T">
+		<![CDATA[
+			SELECT
+				{DLFileEntry.*}
+			FROM
+				DLFileEntry
+			INNER JOIN
+				AssetEntry ON
+					(AssetEntry.classPK = DLFileEntry.fileEntryId)
+			WHERE
+				DLFileEntry.treePath LIKE ? AND
+				(AssetEntry.classNameId = ?)
 		]]>
 	</sql>
 	<sql id="com.liferay.document.library.kernel.service.persistence.DLFileEntryFinder.findByG_U_F">
@@ -359,9 +387,24 @@
 				DLFolder
 			LEFT JOIN
 				AssetEntry ON
+					(AssetEntry.classNameId = ?) AND
 					(AssetEntry.classPK = DLFolder.folderId)
 			WHERE
 				(AssetEntry.classPK IS NULL)
+		]]>
+	</sql>
+	<sql id="com.liferay.document.library.kernel.service.persistence.DLFolderFinder.findF_ByC_T">
+		<![CDATA[
+			SELECT
+				{DLFolder.*}
+			FROM
+				DLFolder
+			INNER JOIN
+				AssetEntry ON
+					(AssetEntry.classPK = DLFolder.folderId)
+			WHERE
+				DLFolder.treePath LIKE ? AND
+				(AssetEntry.classNameId = ?)
 		]]>
 	</sql>
 	<sql id="com.liferay.document.library.kernel.service.persistence.DLFolderFinder.findF_ByG_M_F">

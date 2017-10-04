@@ -28,7 +28,6 @@ import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
@@ -38,6 +37,7 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
+import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -308,6 +308,34 @@ public class DLFileEntryPersistenceTest {
 		_persistence.countByFileEntryTypeId(RandomTestUtil.nextLong());
 
 		_persistence.countByFileEntryTypeId(0L);
+	}
+
+	@Test
+	public void testCountBySmallImageId() throws Exception {
+		_persistence.countBySmallImageId(RandomTestUtil.nextLong());
+
+		_persistence.countBySmallImageId(0L);
+	}
+
+	@Test
+	public void testCountByLargeImageId() throws Exception {
+		_persistence.countByLargeImageId(RandomTestUtil.nextLong());
+
+		_persistence.countByLargeImageId(0L);
+	}
+
+	@Test
+	public void testCountByCustom1ImageId() throws Exception {
+		_persistence.countByCustom1ImageId(RandomTestUtil.nextLong());
+
+		_persistence.countByCustom1ImageId(0L);
+	}
+
+	@Test
+	public void testCountByCustom2ImageId() throws Exception {
+		_persistence.countByCustom2ImageId(RandomTestUtil.nextLong());
+
+		_persistence.countByCustom2ImageId(0L);
 	}
 
 	@Test
