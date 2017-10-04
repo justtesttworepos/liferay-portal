@@ -14,10 +14,14 @@
 
 package com.liferay.exportimport.staging;
 
+import aQute.bnd.annotation.ProviderType;
+
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.staging.LayoutStaging;
 import com.liferay.exportimport.kernel.staging.LayoutStagingUtil;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutRevision;
@@ -35,6 +39,8 @@ import com.liferay.portal.kernel.util.UnicodeProperties;
 
 import java.lang.reflect.InvocationHandler;
 
+import java.util.List;
+
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
@@ -43,6 +49,7 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(immediate = true)
 @DoPrivileged
+@ProviderType
 public class LayoutStagingImpl implements LayoutStaging {
 
 	@Override
@@ -114,7 +121,10 @@ public class LayoutStagingImpl implements LayoutStaging {
 				layout.getGroup(), layout.isPrivateLayout());
 		}
 		catch (Exception e) {
-			throw new IllegalStateException(e);
+			throw new IllegalStateException(
+				"Unable to determine if layout " + layout.getPlid() +
+					" is enabled for versioning",
+				e);
 		}
 	}
 
@@ -165,10 +175,74 @@ public class LayoutStagingImpl implements LayoutStaging {
 			return true;
 		}
 		catch (PortalException pe) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(pe, pe);
+			}
+
 			return false;
 		}
 	}
 
+	public Layout mergeLayoutRevisionIntoLayout(Layout layout) {
+		LayoutStagingHandler layoutStagingHandler = getLayoutStagingHandler(
+			layout);
+
+		if (layoutStagingHandler == null) {
+			return (Layout)layout.clone();
+		}
+
+		layout = layoutStagingHandler.getLayout();
+		layout = (Layout)layout.clone();
+
+		LayoutRevision layoutRevision =
+			layoutStagingHandler.getLayoutRevision();
+
+		layout.setName(layoutRevision.getName());
+		layout.setTitle(layoutRevision.getTitle());
+		layout.setDescription(layoutRevision.getDescription());
+		layout.setKeywords(layoutRevision.getKeywords());
+		layout.setRobots(layoutRevision.getRobots());
+		layout.setTypeSettings(layoutRevision.getTypeSettings());
+		layout.setIconImageId(layoutRevision.getIconImageId());
+		layout.setThemeId(layoutRevision.getThemeId());
+		layout.setColorSchemeId(layoutRevision.getColorSchemeId());
+		layout.setCss(layoutRevision.getCss());
+
+		return layout;
+	}
+
+	@Override
+	public LayoutSet mergeLayoutSetRevisionIntoLayoutSet(LayoutSet layoutSet) {
+		LayoutSetStagingHandler layoutSetStagingHandler =
+			getLayoutSetStagingHandler(layoutSet);
+
+		if (layoutSetStagingHandler == null) {
+			return (LayoutSet)layoutSet.clone();
+		}
+
+		layoutSet = layoutSetStagingHandler.getLayoutSet();
+		layoutSet = (LayoutSet)layoutSet.clone();
+
+		LayoutSetBranch layoutSetBranch =
+			layoutSetStagingHandler.getLayoutSetBranch();
+
+		layoutSet.setLogoId(layoutSetBranch.getLogoId());
+		layoutSet.setThemeId(layoutSetBranch.getThemeId());
+		layoutSet.setColorSchemeId(layoutSetBranch.getColorSchemeId());
+		layoutSet.setCss(layoutSetBranch.getCss());
+		layoutSet.setSettings(layoutSetBranch.getSettings());
+		layoutSet.setLayoutSetPrototypeUuid(
+			layoutSetBranch.getLayoutSetPrototypeUuid());
+		layoutSet.setLayoutSetPrototypeLinkEnabled(
+			layoutSetBranch.isLayoutSetPrototypeLinkEnabled());
+
+		return layoutSet;
+	}
+
+	@Override
 	public boolean prepareLayoutStagingHandler(
 		PortletDataContext portletDataContext, Layout layout) {
 
@@ -186,9 +260,22 @@ public class LayoutStagingImpl implements LayoutStaging {
 			return false;
 		}
 
-		LayoutRevision layoutRevision =
-			_layoutRevisionLocalService.fetchLayoutRevision(
-				layoutSetBranchId, true, layout.getPlid());
+		LayoutRevision layoutRevision = getLayoutRevision(layout);
+
+		if (layoutRevision != null) {
+			layoutRevision = _layoutRevisionLocalService.fetchLayoutRevision(
+				layoutSetBranchId, layoutRevision.getLayoutBranchId(), true,
+				layout.getPlid());
+		}
+		else {
+			List<LayoutRevision> layoutRevisions =
+				_layoutRevisionLocalService.getLayoutRevisions(
+					layoutSetBranchId, layout.getPlid(), true);
+
+			if (!layoutRevisions.isEmpty()) {
+				layoutRevision = layoutRevisions.get(0);
+			}
+		}
 
 		if (layoutRevision == null) {
 			return false;
@@ -208,6 +295,9 @@ public class LayoutStagingImpl implements LayoutStaging {
 
 		_layoutSetBranchLocalService = layoutSetBranchLocalService;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		LayoutStagingImpl.class);
 
 	@Reference
 	private LayoutRevisionLocalService _layoutRevisionLocalService;

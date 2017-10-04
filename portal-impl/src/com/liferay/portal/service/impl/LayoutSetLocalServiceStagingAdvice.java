@@ -16,6 +16,8 @@ package com.liferay.portal.service.impl;
 
 import com.liferay.exportimport.kernel.staging.LayoutStagingUtil;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.model.LayoutSetStagingHandler;
 import com.liferay.portal.kernel.util.ClassLoaderUtil;
@@ -59,13 +61,6 @@ public class LayoutSetLocalServiceStagingAdvice implements MethodInterceptor {
 	}
 
 	protected LayoutSet wrapLayoutSet(LayoutSet layoutSet) {
-		LayoutSetStagingHandler layoutSetStagingHandler =
-			LayoutStagingUtil.getLayoutSetStagingHandler(layoutSet);
-
-		if (layoutSetStagingHandler != null) {
-			return layoutSet;
-		}
-
 		try {
 			if (!LayoutStagingUtil.isBranchingLayoutSet(
 					layoutSet.getGroup(), layoutSet.getPrivateLayout())) {
@@ -74,6 +69,13 @@ public class LayoutSetLocalServiceStagingAdvice implements MethodInterceptor {
 			}
 		}
 		catch (PortalException pe) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(pe, pe);
+			}
+
 			return layoutSet;
 		}
 
@@ -96,5 +98,8 @@ public class LayoutSetLocalServiceStagingAdvice implements MethodInterceptor {
 
 		return wrappedLayoutSets;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		LayoutSetLocalServiceStagingAdvice.class);
 
 }

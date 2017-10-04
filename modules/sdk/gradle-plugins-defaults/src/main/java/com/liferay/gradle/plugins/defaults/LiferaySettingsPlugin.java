@@ -27,7 +27,9 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 
 import org.gradle.api.Plugin;
@@ -74,7 +76,26 @@ public class LiferaySettingsPlugin implements Plugin<Settings> {
 		}
 	}
 
-	protected Set<Path> getDirPaths(String key, Path rootDirPath) {
+	private String[] _getBuildProfileFileNames(Settings settings) {
+		String buildProfile = System.getProperty("build.profile");
+
+		if (Validator.isNull(buildProfile)) {
+			return null;
+		}
+
+		String suffix = "private";
+
+		if (GradleUtil.getProperty(settings, "liferay.releng.public", true)) {
+			suffix = "public";
+		}
+
+		return new String[] {
+			_BUILD_PROFILE_FILE_NAME_PREFIX + buildProfile + "-" + suffix,
+			_BUILD_PROFILE_FILE_NAME_PREFIX + buildProfile
+		};
+	}
+
+	private Set<Path> _getDirPaths(String key, Path rootDirPath) {
 		String dirNamesString = System.getProperty(key);
 
 		if (Validator.isNull(dirNamesString)) {
@@ -90,26 +111,43 @@ public class LiferaySettingsPlugin implements Plugin<Settings> {
 		return dirPaths;
 	}
 
-	/**
-	 * @deprecated As of 1.1.0
-	 */
-	@Deprecated
-	protected void includeProject(
-		Settings settings, Path projectDirPath, Path projectPathRootDirPath) {
+	private <T extends Enum<T>> Set<T> _getFlags(
+		String prefix, Class<T> clazz) {
 
-		_includeProject(settings, projectDirPath, projectPathRootDirPath, "");
+		Set<T> flags = EnumSet.allOf(clazz);
+
+		Iterator<T> iterator = flags.iterator();
+
+		while (iterator.hasNext()) {
+			T flag = iterator.next();
+
+			String flagName = flag.toString();
+
+			flagName = flagName.replace('_', '.');
+			flagName = flagName.toLowerCase();
+
+			if (!Boolean.getBoolean(prefix + flagName)) {
+				iterator.remove();
+			}
+		}
+
+		return flags;
 	}
 
-	/**
-	 * @deprecated As of 1.1.0
-	 */
-	@Deprecated
-	protected void includeProjects(
-			final Settings settings, final Path rootDirPath,
-			final Path projectPathRootDirPath)
-		throws IOException {
+	private ProjectDirType _getProjectDirType(Path dirPath) {
+		if (Files.exists(dirPath.resolve("build.xml"))) {
+			return ProjectDirType.ANT_PLUGIN;
+		}
 
-		_includeProjects(settings, rootDirPath, projectPathRootDirPath, "");
+		if (Files.exists(dirPath.resolve("bnd.bnd"))) {
+			return ProjectDirType.MODULE;
+		}
+
+		if (Files.exists(dirPath.resolve("gulpfile.js"))) {
+			return ProjectDirType.THEME;
+		}
+
+		return ProjectDirType.UNKNOWN;
 	}
 
 	private void _includeProject(
@@ -136,12 +174,14 @@ public class LiferaySettingsPlugin implements Plugin<Settings> {
 			final Path projectPathRootDirPath, final String projectPathPrefix)
 		throws IOException {
 
-		final Set<Path> excludedDirPaths = getDirPaths(
+		final String[] buildProfileFileNames = _getBuildProfileFileNames(
+			settings);
+		final Set<Path> excludedDirPaths = _getDirPaths(
 			"build.exclude.dirs", rootDirPath);
-		final boolean modulesOnlyBuild = Boolean.getBoolean(
-			"modules.only.build");
-		final boolean portalBuild = Boolean.getBoolean("portal.build");
-		final boolean portalPreBuild = Boolean.getBoolean("portal.pre.build");
+		final Set<Path> includedDirPaths = _getDirPaths(
+			"build.include.dirs", rootDirPath);
+		final Set<ProjectDirType> excludedProjectDirTypes = _getFlags(
+			"build.exclude.", ProjectDirType.class);
 
 		Files.walkFileTree(
 			rootDirPath,
@@ -159,47 +199,64 @@ public class LiferaySettingsPlugin implements Plugin<Settings> {
 						return FileVisitResult.SKIP_SUBTREE;
 					}
 
-					boolean moduleProjectDir = false;
-					boolean otherProjectDir = false;
+					ProjectDirType projectDirType = _getProjectDirType(dirPath);
 
-					if (Files.exists(dirPath.resolve("bnd.bnd"))) {
-						moduleProjectDir = true;
-					}
-					else {
-						if (Files.exists(dirPath.resolve("build.xml")) ||
-							Files.exists(dirPath.resolve("gulpfile.js"))) {
-
-							otherProjectDir = true;
-						}
-					}
-
-					if (!moduleProjectDir && !otherProjectDir) {
+					if (projectDirType == ProjectDirType.UNKNOWN) {
 						return FileVisitResult.CONTINUE;
 					}
 
-					if (portalBuild &&
-						Files.notExists(dirPath.resolve(".lfrbuild-portal"))) {
+					if (excludedProjectDirTypes.contains(projectDirType)) {
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					if (!includedDirPaths.isEmpty() &&
+						!_startsWith(dirPath, includedDirPaths)) {
 
 						return FileVisitResult.SKIP_SUBTREE;
 					}
 
-					if (portalPreBuild &&
-						Files.notExists(
-							dirPath.resolve(".lfrbuild-portal-pre"))) {
+					if (buildProfileFileNames != null) {
+						boolean found = false;
 
-						return FileVisitResult.SKIP_SUBTREE;
+						for (String fileName : buildProfileFileNames) {
+							if (Files.exists(dirPath.resolve(fileName))) {
+								found = true;
+
+								break;
+							}
+						}
+
+						if (!found) {
+							return FileVisitResult.SKIP_SUBTREE;
+						}
 					}
 
-					if (moduleProjectDir || !modulesOnlyBuild) {
-						_includeProject(
-							settings, dirPath, projectPathRootDirPath,
-							projectPathPrefix);
-					}
+					_includeProject(
+						settings, dirPath, projectPathRootDirPath,
+						projectPathPrefix);
 
 					return FileVisitResult.SKIP_SUBTREE;
 				}
 
 			});
+	}
+
+	private boolean _startsWith(Path path, Iterable<Path> parentPaths) {
+		for (Path parentPath : parentPaths) {
+			if (path.startsWith(parentPath)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static final String _BUILD_PROFILE_FILE_NAME_PREFIX = ".lfrbuild-";
+
+	private static enum ProjectDirType {
+
+		ANT_PLUGIN, MODULE, THEME, UNKNOWN
+
 	}
 
 }

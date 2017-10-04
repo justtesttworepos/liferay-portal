@@ -21,16 +21,16 @@ String productMenuState = SessionClicks.get(request, ProductNavigationProductMen
 %>
 
 <div class="lfr-product-menu-sidebar" id="productMenuSidebar">
-	<h4 class="sidebar-header">
-		<a href="<%= PortalUtil.addPreservedParameters(themeDisplay, themeDisplay.getURLPortal()) %>">
-			<span class="company-details">
+	<div class="sidebar-header">
+		<a href="<%= PortalUtil.addPreservedParameters(themeDisplay, themeDisplay.getURLPortal(), false, true) %>">
+			<span class="company-details truncate-text">
 				<img alt="" class="company-logo" src="<%= themeDisplay.getRealCompanyLogo() %>" />
-				<span class="company-name"><%= company.getName() %></span>
+				<span class="company-name"><%= HtmlUtil.escape(company.getName()) %></span>
 			</span>
 
 			<aui:icon cssClass="icon-monospaced sidenav-close visible-xs-block" image="times" markupView="lexicon" url="javascript:;" />
 		</a>
-	</h4>
+	</div>
 
 	<div class="sidebar-body">
 		<c:if test='<%= Objects.equals(productMenuState, "open") %>'>

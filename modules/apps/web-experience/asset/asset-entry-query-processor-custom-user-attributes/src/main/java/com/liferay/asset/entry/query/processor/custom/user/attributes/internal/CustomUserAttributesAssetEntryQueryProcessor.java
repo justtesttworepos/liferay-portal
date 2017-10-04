@@ -15,24 +15,18 @@
 package com.liferay.asset.entry.query.processor.custom.user.attributes.internal;
 
 import com.liferay.asset.kernel.service.persistence.AssetEntryQuery;
-import com.liferay.asset.kernel.util.AssetEntryQueryProcessor;
 import com.liferay.asset.publisher.web.constants.AssetPublisherPortletKeys;
 import com.liferay.asset.publisher.web.util.AssetPublisherUtil;
+import com.liferay.asset.util.AssetEntryQueryProcessor;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 
-import java.io.IOException;
-
-import java.util.Locale;
-
 import javax.portlet.PortletPreferences;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Jorge Ferrer
@@ -48,23 +42,6 @@ public class CustomUserAttributesAssetEntryQueryProcessor
 	implements AssetEntryQueryProcessor {
 
 	@Override
-	public String getKey() {
-		return null;
-	}
-
-	@Override
-	public String getTitle(Locale locale) {
-		return null;
-	}
-
-	@Override
-	public void include(
-			HttpServletRequest httpServletRequest,
-			HttpServletResponse httpServletResponse)
-		throws IOException {
-	}
-
-	@Override
 	public void processAssetEntryQuery(
 			User user, PortletPreferences preferences,
 			AssetEntryQuery assetEntryQuery)
@@ -73,8 +50,11 @@ public class CustomUserAttributesAssetEntryQueryProcessor
 		String customUserAttributes = GetterUtil.getString(
 			preferences.getValue("customUserAttributes", StringPool.BLANK));
 
-		AssetPublisherUtil.addUserAttributes(
+		_assetPublisherUtil.addUserAttributes(
 			user, StringUtil.split(customUserAttributes), assetEntryQuery);
 	}
+
+	@Reference
+	private AssetPublisherUtil _assetPublisherUtil;
 
 }

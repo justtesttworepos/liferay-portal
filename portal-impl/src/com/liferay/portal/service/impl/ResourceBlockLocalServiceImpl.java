@@ -17,7 +17,11 @@ package com.liferay.portal.service.impl;
 import com.liferay.portal.kernel.dao.db.DB;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.jdbc.CurrentConnectionUtil;
+import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.DynamicQuery;
 import com.liferay.portal.kernel.dao.orm.ORMException;
+import com.liferay.portal.kernel.dao.orm.Property;
+import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
 import com.liferay.portal.kernel.dao.orm.QueryPos;
 import com.liferay.portal.kernel.dao.orm.SQLQuery;
 import com.liferay.portal.kernel.dao.orm.Session;
@@ -44,6 +48,7 @@ import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.security.permission.ResourceBlockIdsBag;
 import com.liferay.portal.kernel.service.PersistedModelLocalService;
 import com.liferay.portal.kernel.service.PersistedModelLocalServiceRegistryUtil;
+import com.liferay.portal.kernel.spring.aop.Skip;
 import com.liferay.portal.kernel.transaction.Isolation;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.TransactionCommitCallbackUtil;
@@ -54,6 +59,8 @@ import com.liferay.portal.security.permission.PermissionCacheUtil;
 import com.liferay.portal.service.base.ResourceBlockLocalServiceBaseImpl;
 import com.liferay.portal.util.PropsValues;
 import com.liferay.util.dao.orm.CustomSQLUtil;
+
+import java.lang.reflect.Method;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -309,7 +316,7 @@ public class ResourceBlockLocalServiceImpl
 			return (PermissionedModel)persistedModel;
 		}
 		catch (ClassCastException cce) {
-			throw new ResourceBlocksNotSupportedException();
+			throw new ResourceBlocksNotSupportedException(cce);
 		}
 	}
 
@@ -411,6 +418,7 @@ public class ResourceBlockLocalServiceImpl
 	}
 
 	@Override
+	@Skip
 	public boolean isSupported(String name) {
 		return PersistedModelLocalServiceRegistryUtil.
 			isPermissionedModelLocalService(name);
@@ -475,7 +483,10 @@ public class ResourceBlockLocalServiceImpl
 
 						qPos.add(resourceBlockId);
 
-						sqlQuery.executeUpdate();
+						if (sqlQuery.executeUpdate() > 0) {
+							resourceBlockPermissionLocalService.
+								deleteResourceBlockPermissions(resourceBlockId);
+						}
 
 						PermissionCacheUtil.clearResourceBlockCache(
 							resourceBlock.getCompanyId(),
@@ -895,7 +906,7 @@ public class ResourceBlockLocalServiceImpl
 				catch (SystemException se) {
 					if (_log.isWarnEnabled()) {
 						_log.warn(
-							"Unable to add a new resource block. Retrying");
+							"Unable to add a new resource block. Retrying", se);
 					}
 
 					// On failure, cancel all pending persistent entities
@@ -1088,9 +1099,93 @@ public class ResourceBlockLocalServiceImpl
 		String permissionsHash =
 			resourceBlockPermissionsContainer.getPermissionsHash();
 
-		resourceBlock.setPermissionsHash(permissionsHash);
+		ResourceBlock existingResourceBlock =
+			resourceBlockPersistence.fetchByC_G_N_P(
+				resourceBlock.getCompanyId(), resourceBlock.getGroupId(),
+				resourceBlock.getName(), permissionsHash);
 
-		updateResourceBlock(resourceBlock);
+		if (existingResourceBlock == null) {
+			resourceBlock.setPermissionsHash(permissionsHash);
+
+			updateResourceBlock(resourceBlock);
+
+			return;
+		}
+
+		if (existingResourceBlock.equals(resourceBlock)) {
+			return;
+		}
+
+		try {
+			_updatePermissionedModels(
+				resourceBlock.getName(), resourceBlock.getResourceBlockId(),
+				existingResourceBlock.getResourceBlockId());
+		}
+		catch (Exception e) {
+			_log.error(
+				"Unable to update resource block IDs for resource " +
+					resourceBlock.getName(),
+				e);
+
+			return;
+		}
+
+		existingResourceBlock.setReferenceCount(
+			existingResourceBlock.getReferenceCount() +
+				resourceBlock.getReferenceCount());
+
+		resourceBlockPersistence.update(existingResourceBlock);
+
+		deleteResourceBlock(resourceBlock);
+	}
+
+	private void _updatePermissionedModels(
+			String name, long oldResourceBlockId, long newResourceBlockId)
+		throws Exception {
+
+		PersistedModelLocalService persistedModelLocalService =
+			PersistedModelLocalServiceRegistryUtil.
+				getPersistedModelLocalService(name);
+
+		if (persistedModelLocalService == null) {
+			throw new ResourceBlocksNotSupportedException();
+		}
+
+		Class<?> clazz = persistedModelLocalService.getClass();
+
+		Method getActionableDynamicQueryMethod = clazz.getMethod(
+			"getActionableDynamicQuery");
+
+		ActionableDynamicQuery actionableDynamicQuery =
+			(ActionableDynamicQuery)getActionableDynamicQueryMethod.invoke(
+				persistedModelLocalService);
+
+		actionableDynamicQuery.setAddCriteriaMethod(
+			new ActionableDynamicQuery.AddCriteriaMethod() {
+
+				@Override
+				public void addCriteria(DynamicQuery dynamicQuery) {
+					Property property = PropertyFactoryUtil.forName(
+						"resourceBlockId");
+
+					dynamicQuery.add(property.eq(oldResourceBlockId));
+				}
+
+			});
+		actionableDynamicQuery.setPerformActionMethod(
+			new ActionableDynamicQuery.
+				PerformActionMethod<PermissionedModel>() {
+
+				@Override
+				public void performAction(PermissionedModel permissionedModel) {
+					permissionedModel.setResourceBlockId(newResourceBlockId);
+
+					permissionedModel.persist();
+				}
+
+			});
+
+		actionableDynamicQuery.performActions();
 	}
 
 	private static final String _DELETE_RESOURCE_BLOCK =

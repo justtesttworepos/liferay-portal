@@ -17,8 +17,8 @@ package com.liferay.wsrp.internal.bind;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Portlet;
-import com.liferay.portal.kernel.model.PortletConstants;
 import com.liferay.portal.kernel.model.PortletInfo;
+import com.liferay.portal.kernel.portlet.PortletIdCodec;
 import com.liferay.portal.kernel.service.PortletLocalServiceUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
@@ -57,6 +57,7 @@ import org.apache.axis.message.MessageElement;
 public class V2ServiceDescriptionServiceImpl
 	extends BaseServiceImpl implements WSRP_v2_ServiceDescription_PortType {
 
+	@Override
 	public ServiceDescription getServiceDescription(
 			GetServiceDescription getServiceDescription)
 		throws RemoteException {
@@ -189,7 +190,7 @@ public class V2ServiceDescriptionServiceImpl
 		List<PortletDescription> portletDescriptions = new ArrayList<>();
 
 		for (String portletId : portletIds) {
-			String rootPortletId = PortletConstants.getRootPortletId(portletId);
+			String rootPortletId = PortletIdCodec.decodePortletName(portletId);
 
 			Portlet portlet = PortletLocalServiceUtil.getPortletById(
 				rootPortletId);

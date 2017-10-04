@@ -37,25 +37,23 @@ if (microblogsEntryId > 0) {
 
 String modifiedDate = StringPool.BLANK;
 
-String receiverUserDisplayURL = StringPool.BLANK;
 String receiverUserFullName = StringPool.BLANK;
 String receiverUserScreenName = StringPool.BLANK;
 
 boolean edit = ParamUtil.getBoolean(request, "edit");
 boolean repost = ParamUtil.getBoolean(request, "repost");
 
+User receiverUser = null;
+
 if ((microblogsEntry != null) && !edit) {
 	modifiedDate = dateFormatDateTime.format(microblogsEntry.getModifiedDate());
 
 	receiverUserFullName = HtmlUtil.escape(PortalUtil.getUserName(microblogsEntry));
 
-	try {
-		User receiverUser = UserLocalServiceUtil.getUserById(microblogsEntry.getUserId());
+	receiverUser = UserLocalServiceUtil.fetchUserById(microblogsEntry.getUserId());
 
-		receiverUserDisplayURL = receiverUser.getDisplayURL(themeDisplay);
+	if (receiverUser != null) {
 		receiverUserScreenName = receiverUser.getScreenName();
-	}
-	catch (NoSuchUserException nsue) {
 	}
 }
 
@@ -90,12 +88,22 @@ if (comment) {
 		<c:otherwise>
 			<div class="microblogs-entry">
 				<span class="thumbnail">
-					<a href="<%= receiverUserDisplayURL %>">
-						<liferay-ui:user-portrait
-							imageCssClass="user-icon-lg"
-							userId="<%= (microblogsEntry != null) ? microblogsEntry.getUserId() : 0 %>"
-						/>
-					</a>
+					<c:choose>
+						<c:when test="<%= (receiverUser != null) && receiverUser.isActive() %>">
+							<a href="<%= receiverUser.getDisplayURL(themeDisplay) %>">
+								<liferay-ui:user-portrait
+									cssClass="user-icon-xs"
+									userId="<%= (microblogsEntry != null) ? microblogsEntry.getUserId() : 0 %>"
+								/>
+							</a>
+						</c:when>
+						<c:otherwise>
+							<liferay-ui:user-portrait
+								cssClass="user-icon-xs"
+								userId="<%= (microblogsEntry != null) ? microblogsEntry.getUserId() : 0 %>"
+							/>
+						</c:otherwise>
+					</c:choose>
 				</span>
 
 				<div class="entry-bubble">
@@ -145,8 +153,8 @@ if (comment) {
 		<c:if test="<%= comment %>">
 			<span class="thumbnail">
 				<liferay-ui:user-portrait
-					imageCssClass="user-icon-lg"
-					userId="<%= user.getUserId() %>"
+					cssClass="user-icon-xs"
+					user="<%= user %>"
 				/>
 			</span>
 		</c:if>
@@ -247,7 +255,8 @@ if (comment) {
 
 	var REGEX_USER_NAME = /@(.*[^\s]+)$/;
 
-	var TPL_SEARCH_RESULTS = '<div class="microblogs-autocomplete">' +
+	var TPL_SEARCH_RESULTS =
+		'<div class="microblogs-autocomplete">' +
 			'<div class="thumbnail">' +
 				'<img alt="{fullName}" src="{portraitURL}" />' +
 			'</div>' +
@@ -290,12 +299,6 @@ if (comment) {
 			var highlighterContent = A.one('#<portlet:namespace />highlighterContent<%= formId %>');
 
 			var inputValue = '<%= ((microblogsEntry != null) && (edit)) ? StringUtil.replace(HtmlUtil.escapeJS(microblogsEntry.getContent()), "\'", "\\'") : StringPool.BLANK %>';
-
-			if ((autocomplete.height() < 45) || (highlighterContent.height() < 45)) {
-				autocomplete.height(45);
-
-				highlighterContent.height(45);
-			}
 
 			var textarea = new A.Textarea(
 				{
@@ -413,12 +416,6 @@ if (comment) {
 			var highlighterContent = A.one('#<portlet:namespace />highlighterContent<%= formId %>');
 
 			var contentInputHeight = contentInput.height();
-
-			if (contentInputHeight > 45) {
-				autocomplete.height(contentInputHeight);
-
-				highlighterContent.height(contentInputHeight);
-			}
 		};
 
 		var updateContentTextbox = function(event) {
@@ -443,27 +440,35 @@ if (comment) {
 		};
 
 		var createAutocomplete = function(contentTextarea) {
-			autocompleteDiv = new A.AutoComplete(
+			AUI.$.ajax(
+				'<liferay-portlet:resourceURL id="/microblogs/autocomplete_user_mentions" />',
 				{
-					inputNode: contentTextarea,
-					maxResults: 5,
-					on: {
-						clear: function() {
-							var highlighterContent = A.one('#<portlet:namespace />highlighterContent<%= formId %>');
-
-							highlighterContent.html('');
-						},
-						query: updateHighlightDivContent,
-						select: updateContentTextbox
+					data: {
+						userId: <%= user.getUserId() %>
 					},
-					resultFilters: 'phraseMatch',
-					resultFormatter: resultFormatter,
-					resultTextLocator: 'fullName',
-					source: <%= MicroblogsUtil.getJSONRecipients(user.getUserId(), themeDisplay) %>
-				}
-			).render();
+					success: function(responseData) {
+						autocompleteDiv = new A.AutoComplete(
+							{
+								inputNode: contentTextarea,
+								maxResults: 5,
+								on: {
+									clear: function() {
+										var highlighterContent = A.one('#<portlet:namespace />highlighterContent<%= formId %>');
 
-			return autocompleteDiv;
+										highlighterContent.html('');
+									},
+									query: updateHighlightDivContent,
+									select: updateContentTextbox
+								},
+								resultFilters: 'phraseMatch',
+								resultFormatter: resultFormatter,
+								resultTextLocator: 'fullName',
+								source: responseData
+							}
+						).render();
+					}
+				}
+			);
 		};
 
 		<c:choose>

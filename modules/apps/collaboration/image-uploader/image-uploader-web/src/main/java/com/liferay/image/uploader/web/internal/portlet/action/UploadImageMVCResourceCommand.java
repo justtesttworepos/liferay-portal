@@ -76,9 +76,15 @@ public class UploadImageMVCResourceCommand extends BaseMVCResourceCommand {
 			}
 		}
 		catch (NoSuchFileEntryException nsfee) {
+
+			// LPS-52675
+
+			if (_log.isDebugEnabled()) {
+				_log.debug(nsfee, nsfee);
+			}
 		}
 		catch (Exception e) {
-			_log.error(e);
+			_log.error("Unable to serve resource", e);
 		}
 	}
 

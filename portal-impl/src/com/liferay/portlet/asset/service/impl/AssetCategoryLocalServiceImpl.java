@@ -89,7 +89,7 @@ public class AssetCategoryLocalServiceImpl
 
 		// Category
 
-		User user = userPersistence.findByPrimaryKey(userId);
+		User user = userLocalService.getUser(userId);
 
 		String name = titleMap.get(LocaleUtil.getSiteDefault());
 
@@ -354,6 +354,14 @@ public class AssetCategoryLocalServiceImpl
 	}
 
 	@Override
+	public AssetCategory fetchCategory(
+		long groupId, long parentCategoryId, String name, long vocabularyId) {
+
+		return assetCategoryPersistence.fetchByG_P_N_V_First(
+			groupId, parentCategoryId, name, vocabularyId, null);
+	}
+
+	@Override
 	public List<AssetCategory> getCategories() {
 		return assetCategoryPersistence.findAll();
 	}
@@ -460,6 +468,11 @@ public class AssetCategoryLocalServiceImpl
 	public int getChildCategoriesCount(long parentCategoryId) {
 		return assetCategoryPersistence.countByParentCategoryId(
 			parentCategoryId);
+	}
+
+	@Override
+	public List<AssetCategory> getDescendantCategories(AssetCategory category) {
+		return assetCategoryPersistence.getDescendants(category);
 	}
 
 	@Override

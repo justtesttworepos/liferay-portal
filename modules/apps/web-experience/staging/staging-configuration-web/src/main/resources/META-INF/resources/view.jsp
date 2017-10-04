@@ -126,6 +126,7 @@ BackgroundTask lastCompletedInitialPublicationBackgroundTask = BackgroundTaskMan
 				<c:if test="<%= privateLayoutSet.isLayoutSetPrototypeLinkActive() || publicLayoutSet.isLayoutSetPrototypeLinkActive() %>">
 					<div class="alert alert-info">
 						<liferay-ui:message key="staging-cannot-be-used-for-this-site-because-the-propagation-of-changes-from-the-site-template-is-enabled" />
+
 						<c:choose>
 							<c:when test="<%= PortalPermissionUtil.contains(permissionChecker, ActionKeys.UNLINK_LAYOUT_SET_PROTOTYPE) %>">
 								<liferay-ui:message key="change-the-configuration-in-the-details-section" />
@@ -136,6 +137,12 @@ BackgroundTask lastCompletedInitialPublicationBackgroundTask = BackgroundTaskMan
 						</c:choose>
 					</div>
 				</c:if>
+
+				<liferay-ui:error exception="<%= Exception.class %>">
+					<liferay-ui:message key="an-unexpected-error-occurred-with-the-initial-staging-publication" />
+
+					<%= errorException.toString() %>
+				</liferay-ui:error>
 
 				<liferay-ui:error exception="<%= LocaleException.class %>">
 

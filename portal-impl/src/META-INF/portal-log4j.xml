@@ -132,6 +132,10 @@
 		<priority value="ERROR" />
 	</category>
 
+	<category name="com.liferay.portal.dao.orm.hibernate.VerifySessionFactoryWrapper">
+		<priority value="FATAL" />
+	</category>
+
 	<category name="com.liferay.portal.deploy">
 		<priority value="INFO" />
 	</category>
@@ -276,6 +280,10 @@
 		<priority value="WARN" />
 	</category>
 
+	<category name="com.liferay.portal.kernel.cluster">
+		<priority value="WARN" />
+	</category>
+
 	<category name="com.liferay.portal.kernel.dao.orm.QueryUtil">
 		<priority value="WARN" />
 	</category>
@@ -306,6 +314,10 @@
 
 	<category name="com.liferay.portal.kernel.portlet.RestrictPortletServletRequest">
 		<priority value="ERROR" />
+	</category>
+
+	<category name="com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet">
+		<priority value="WARN" />
 	</category>
 
 	<category name="com.liferay.portal.kernel.process">
@@ -652,6 +664,10 @@
 		<priority value="ERROR" />
 	</category>
 
+	<category name="com.liferay.portal.service.persistence.impl">
+		<priority value="WARN " />
+	</category>
+
 	<category name="com.liferay.portal.servlet">
 		<priority value="ERROR" />
 	</category>
@@ -952,14 +968,6 @@
 		<priority value="ERROR" />
 	</category>
 
-	<category name="com.liferay.portlet.blogs.service.impl.BlogsEntryLocalServiceImpl">
-		<priority value="INFO" />
-	</category>
-
-	<category name="com.liferay.portlet.blogs.util">
-		<priority value="INFO" />
-	</category>
-
 	<category name="com.liferay.portlet.documentlibrary.lar">
 		<priority value="WARN" />
 	</category>
@@ -1034,10 +1042,6 @@
 
 	<category name="com.liferay.sampletest">
 		<priority value="INFO" />
-	</category>
-
-	<category name="com.liferay.taglib.util.IncludeTag">
-		<priority value="WARN" />
 	</category>
 
 	<category name="com.liferay.testhook">

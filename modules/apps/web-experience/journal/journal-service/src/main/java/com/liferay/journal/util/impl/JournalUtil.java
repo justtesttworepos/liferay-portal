@@ -79,6 +79,7 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.HttpUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringPool;
@@ -409,6 +410,10 @@ public class JournalUtil {
 		return layout;
 	}
 
+	/**
+	 * @deprecated As of 4.0.0, with no direct replacement
+	 */
+	@Deprecated
 	public static List<JournalArticle> getArticles(Hits hits)
 		throws PortalException {
 
@@ -419,7 +424,8 @@ public class JournalUtil {
 
 		for (com.liferay.portal.kernel.search.Document document : documents) {
 			String articleId = document.get(Field.ARTICLE_ID);
-			long groupId = GetterUtil.getLong(document.get(Field.GROUP_ID));
+			long groupId = GetterUtil.getLong(
+				document.get(Field.SCOPE_GROUP_ID));
 
 			JournalArticle article =
 				JournalArticleLocalServiceUtil.fetchLatestArticle(
@@ -831,6 +837,28 @@ public class JournalUtil {
 		return false;
 	}
 
+	public static boolean isLatestArticle(JournalArticle article) {
+		JournalArticle latestArticle =
+			JournalArticleLocalServiceUtil.fetchLatestArticle(
+				article.getResourcePrimKey(), WorkflowConstants.STATUS_ANY,
+				false);
+
+		if ((latestArticle != null) &&
+			(article.getId() == latestArticle.getId())) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	public static boolean isSubscribedToArticle(
+		long companyId, long groupId, long userId, long articleId) {
+
+		return SubscriptionLocalServiceUtil.isSubscribed(
+			companyId, userId, JournalArticle.class.getName(), articleId);
+	}
+
 	public static boolean isSubscribedToFolder(
 			long companyId, long groupId, long userId, long folderId)
 		throws PortalException {
@@ -975,7 +1003,7 @@ public class JournalUtil {
 		catch (Exception e) {
 			throw new LocaleException(
 				LocaleException.TYPE_CONTENT,
-				"The locale " + defaultImportLocale + " is not available");
+				"The locale " + defaultImportLocale + " is not available", e);
 		}
 
 		return content;
@@ -1320,6 +1348,10 @@ public class JournalUtil {
 
 		List<Element> elements = newElement.elements("dynamic-content");
 
+		if ((elements == null) || elements.isEmpty()) {
+			return;
+		}
+
 		Element newContentElement = elements.get(0);
 
 		String newLanguageId = newContentElement.attributeValue("language-id");
@@ -1425,7 +1457,7 @@ public class JournalUtil {
 			return;
 		}
 
-		if (_customTokens == null) {
+		if (MapUtil.isEmpty(_customTokens)) {
 			synchronized (JournalUtil.class) {
 				_customTokens = new HashMap<>();
 
@@ -1505,9 +1537,9 @@ public class JournalUtil {
 			"protocol", HttpUtil.getProtocol(themeDisplay.getURLPortal()));
 		tokens.put("root_path", themeDisplay.getPathContext());
 		tokens.put(
-			"site_group_id", String.valueOf(themeDisplay.getSiteGroupId()));
-		tokens.put(
 			"scope_group_id", String.valueOf(themeDisplay.getScopeGroupId()));
+		tokens.put(
+			"site_group_id", String.valueOf(themeDisplay.getSiteGroupId()));
 		tokens.put("theme_image_path", themeDisplay.getPathThemeImages());
 
 		_populateCustomTokens(tokens, themeDisplay.getCompanyId());

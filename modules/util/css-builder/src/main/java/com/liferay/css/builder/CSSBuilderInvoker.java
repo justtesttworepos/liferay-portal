@@ -44,6 +44,9 @@ public class CSSBuilderInvoker {
 		}
 
 		args.add(
+			"sass.append.css.import.timestamps=" +
+				cssBuilderArgs.isAppendCssImportTimestamps());
+		args.add(
 			"sass.docroot.dir=" +
 				_getAbsolutePath(baseDir, cssBuilderArgs.getDocrootDirName()));
 		args.add(
@@ -74,7 +77,11 @@ public class CSSBuilderInvoker {
 	}
 
 	private static String _getAbsolutePath(File baseDir, String fileName) {
-		File file = new File(baseDir, fileName);
+		File file = new File(fileName);
+
+		if (!file.isAbsolute()) {
+			file = new File(baseDir, fileName);
+		}
 
 		return StringUtil.replace(
 			file.getAbsolutePath(), CharPool.BACK_SLASH, CharPool.SLASH);

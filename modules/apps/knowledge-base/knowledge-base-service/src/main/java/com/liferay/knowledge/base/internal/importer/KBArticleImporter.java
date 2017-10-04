@@ -14,20 +14,21 @@
 
 package com.liferay.knowledge.base.internal.importer;
 
+import com.liferay.asset.kernel.exception.AssetCategoryException;
 import com.liferay.knowledge.base.constants.KBArticleConstants;
 import com.liferay.knowledge.base.constants.KBFolderConstants;
 import com.liferay.knowledge.base.exception.KBArticleImportException;
 import com.liferay.knowledge.base.internal.importer.util.KBArticleMarkdownConverter;
 import com.liferay.knowledge.base.model.KBArticle;
-import com.liferay.knowledge.base.service.KBArticleLocalServiceUtil;
+import com.liferay.knowledge.base.service.KBArticleLocalService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.service.ServiceContext;
-import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StreamUtil;
 import com.liferay.portal.kernel.util.StringBundler;
+import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.kernel.zip.ZipReader;
@@ -40,17 +41,24 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author James Hinkey
  * @author Sergio González
  * @author Jesse Rao
  */
-@Component(service = KBArticleImporter.class)
 public class KBArticleImporter {
+
+	public KBArticleImporter(
+		KBArchiveFactory kbArchiveFactory,
+		KBArticleLocalService kbArticleLocalService, Portal portal) {
+
+		_kbArchiveFactory = kbArchiveFactory;
+		_kbArticleLocalService = kbArticleLocalService;
+		_portal = portal;
+	}
 
 	public int processZipFile(
 			long userId, long groupId, long parentKBFolderId,
@@ -96,9 +104,8 @@ public class KBArticleImporter {
 
 		String urlTitle = kbArticleMarkdownConverter.getUrlTitle();
 
-		KBArticle kbArticle =
-			KBArticleLocalServiceUtil.fetchKBArticleByUrlTitle(
-				groupId, parentKBFolderId, urlTitle);
+		KBArticle kbArticle = _kbArticleLocalService.fetchKBArticleByUrlTitle(
+			groupId, parentKBFolderId, urlTitle);
 
 		boolean newKBArticle = false;
 
@@ -113,7 +120,7 @@ public class KBArticleImporter {
 				serviceContext.setWorkflowAction(
 					WorkflowConstants.ACTION_SAVE_DRAFT);
 
-				kbArticle = KBArticleLocalServiceUtil.addKBArticle(
+				kbArticle = _kbArticleLocalService.addKBArticle(
 					userId, parentResourceClassNameId, parentResourcePrimaryKey,
 					kbArticleMarkdownConverter.getTitle(), urlTitle, markdown,
 					null, kbArticleMarkdownConverter.getSourceURL(), null, null,
@@ -121,6 +128,9 @@ public class KBArticleImporter {
 
 				serviceContext.setWorkflowAction(workflowAction);
 			}
+		}
+		catch (AssetCategoryException ace) {
+			throw new KBArticleImportException.MustHaveACategory(ace);
 		}
 		catch (Exception e) {
 			StringBundler sb = new StringBundler(4);
@@ -136,10 +146,9 @@ public class KBArticleImporter {
 		try {
 			String html =
 				kbArticleMarkdownConverter.processAttachmentsReferences(
-					userId, kbArticle, zipReader,
-					new HashMap<String, FileEntry>());
+					userId, kbArticle, zipReader, new HashMap<>());
 
-			kbArticle = KBArticleLocalServiceUtil.updateKBArticle(
+			kbArticle = _kbArticleLocalService.updateKBArticle(
 				userId, kbArticle.getResourcePrimKey(),
 				kbArticleMarkdownConverter.getTitle(), html,
 				kbArticle.getDescription(),
@@ -229,7 +238,7 @@ public class KBArticleImporter {
 			KBArticle introKBArticle = introFileNameKBArticleMap.get(introFile);
 
 			if ((introFile != null) && (introKBArticle == null)) {
-				long sectionResourceClassNameId = PortalUtil.getClassNameId(
+				long sectionResourceClassNameId = _portal.getClassNameId(
 					KBFolderConstants.getClassName());
 				long sectionResourcePrimaryKey = parentKBFolderId;
 
@@ -237,29 +246,35 @@ public class KBArticleImporter {
 					folder.getParentFolderIntroFile());
 
 				if (parentIntroKBArticle != null) {
-					sectionResourceClassNameId = PortalUtil.getClassNameId(
+					sectionResourceClassNameId = _portal.getClassNameId(
 						KBArticleConstants.getClassName());
 					sectionResourcePrimaryKey =
 						parentIntroKBArticle.getResourcePrimKey();
 				}
 
+				String introFileName = introFile.getName();
+
+				if (prioritizeByNumericalPrefix) {
+					introFileName = _mergeFolderPriority(folder, introFileName);
+				}
+
 				introKBArticle = addKBArticleMarkdown(
 					userId, groupId, parentKBFolderId,
 					sectionResourceClassNameId, sectionResourcePrimaryKey,
-					introFile.getContent(), introFile.getName(), zipReader,
-					metadata, prioritizationStrategy, serviceContext);
+					introFile.getContent(), introFileName, zipReader, metadata,
+					prioritizationStrategy, serviceContext);
 
 				importedKBArticlesCount++;
 
 				introFileNameKBArticleMap.put(introFile, introKBArticle);
 			}
 
-			long sectionResourceClassNameId = PortalUtil.getClassNameId(
+			long sectionResourceClassNameId = _portal.getClassNameId(
 				KBFolderConstants.getClassName());
 			long sectionResourcePrimaryKey = parentKBFolderId;
 
 			if (introKBArticle != null) {
-				sectionResourceClassNameId = PortalUtil.getClassNameId(
+				sectionResourceClassNameId = _portal.getClassNameId(
 					KBArticleConstants.getClassName());
 				sectionResourcePrimaryKey = introKBArticle.getResourcePrimKey();
 			}
@@ -289,14 +304,31 @@ public class KBArticleImporter {
 		return importedKBArticlesCount;
 	}
 
-	@Reference(unbind = "-")
-	protected void setKBArchiveFactory(KBArchiveFactory kbArchiveFactory) {
-		_kbArchiveFactory = kbArchiveFactory;
+	private String _mergeFolderPriority(
+		KBArchive.Folder folder, String introFileName) {
+
+		Matcher folderNameMatcher = _priorityPattern.matcher(folder.getName());
+
+		if (!folderNameMatcher.find()) {
+			return introFileName;
+		}
+
+		String folderPrefix = folderNameMatcher.group(1);
+
+		Matcher introFileNameMatcher = _priorityPattern.matcher(introFileName);
+
+		return introFileNameMatcher.replaceFirst(
+			StringPool.SLASH + folderPrefix + "$2");
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		KBArticleImporter.class);
 
-	private KBArchiveFactory _kbArchiveFactory;
+	private static final Pattern _priorityPattern = Pattern.compile(
+		"/(\\d+)(-[^/]+)$");
+
+	private final KBArchiveFactory _kbArchiveFactory;
+	private final KBArticleLocalService _kbArticleLocalService;
+	private final Portal _portal;
 
 }

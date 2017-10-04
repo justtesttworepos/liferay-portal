@@ -14,11 +14,14 @@
 
 package com.liferay.dynamic.data.mapping.form.renderer.internal;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import com.google.template.soy.data.SanitizedContent;
 
+import com.liferay.dynamic.data.mapping.form.evaluator.DDMFormEvaluationResult;
+import com.liferay.dynamic.data.mapping.form.evaluator.DDMFormEvaluator;
+import com.liferay.dynamic.data.mapping.form.evaluator.DDMFormEvaluatorContext;
 import com.liferay.dynamic.data.mapping.form.field.type.DDMFormFieldTypeServicesTracker;
 import com.liferay.dynamic.data.mapping.form.renderer.DDMFormRenderingContext;
+import com.liferay.dynamic.data.mapping.internal.util.DDMImpl;
 import com.liferay.dynamic.data.mapping.io.DDMFormFieldTypesJSONSerializer;
 import com.liferay.dynamic.data.mapping.io.DDMFormJSONSerializer;
 import com.liferay.dynamic.data.mapping.io.DDMFormLayoutJSONSerializer;
@@ -26,15 +29,17 @@ import com.liferay.dynamic.data.mapping.io.internal.DDMFormJSONSerializerImpl;
 import com.liferay.dynamic.data.mapping.io.internal.DDMFormLayoutJSONSerializerImpl;
 import com.liferay.dynamic.data.mapping.model.DDMForm;
 import com.liferay.dynamic.data.mapping.model.DDMFormLayout;
+import com.liferay.dynamic.data.mapping.service.DDMDataProviderInstanceService;
 import com.liferay.dynamic.data.mapping.test.util.DDMFormTestUtil;
-import com.liferay.dynamic.data.mapping.util.impl.DDMImpl;
 import com.liferay.portal.json.JSONFactoryImpl;
+import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.ReflectionUtil;
+import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.util.PortalImpl;
 
@@ -57,26 +62,28 @@ import org.junit.runner.RunWith;
 
 import org.mockito.Matchers;
 
+import org.powermock.api.mockito.PowerMockito;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
  * @author Marcellus Tavares
  */
 @RunWith(PowerMockRunner.class)
-public class DDMFormTemplateContextFactoryTest {
+public class DDMFormTemplateContextFactoryTest extends PowerMockito {
 
 	@Before
 	public void setUp() throws Exception {
-		_ddmFormTemplateContextFactory =
-			new DDMFormTemplateContextFactoryImpl();
+		setUpDDMFormTemplateContextFactory();
 
 		setUpDDM();
 		setUpDDMFormContextProviderServlet();
+		setUpDDMFormEvaluator();
 		setUpDDMFormFieldTypeServicesTracker();
 		setUpDDMFormFieldTypesJSONSerializer();
 		setUpDDMFormJSONSerializer();
 		setUpDDMFormLayoutJSONSerializer();
 
+		setUpJSONFactory();
 		setUpLanguageUtil();
 		setUpLocaleThreadLocal();
 		setUpPortalClassLoaderUtil();
@@ -196,9 +203,12 @@ public class DDMFormTemplateContextFactoryTest {
 			"<label class=\"required-warning\">All fields marked with '*' " +
 				"are required.</label>";
 
+		SanitizedContent sanitizedContent =
+			(SanitizedContent)templateContext.get(
+				"requiredFieldsWarningMessageHTML");
+
 		Assert.assertEquals(
-			expectedRequiredFieldsWarningHTML,
-			templateContext.get("requiredFieldsWarningMessageHTML"));
+			expectedRequiredFieldsWarningHTML, sanitizedContent.getContent());
 	}
 
 	@Test
@@ -346,7 +356,7 @@ public class DDMFormTemplateContextFactoryTest {
 
 		// Paginated form
 
-		ddmFormLayout.setPaginationMode(DDMFormLayout.WIZARD_MODE);
+		ddmFormLayout.setPaginationMode(StringPool.BLANK);
 
 		templateContext = _ddmFormTemplateContextFactory.create(
 			DDMFormTestUtil.createDDMForm(), ddmFormLayout,
@@ -354,6 +364,17 @@ public class DDMFormTemplateContextFactoryTest {
 
 		Assert.assertEquals(
 			"ddm.paginated_form", templateContext.get("templateNamespace"));
+
+		// Wizard form
+
+		ddmFormLayout.setPaginationMode(DDMFormLayout.WIZARD_MODE);
+
+		templateContext = _ddmFormTemplateContextFactory.create(
+			DDMFormTestUtil.createDDMForm(), ddmFormLayout,
+			new DDMFormRenderingContext());
+
+		Assert.assertEquals(
+			"ddm.wizard_form", templateContext.get("templateNamespace"));
 	}
 
 	protected void setDeclaredField(
@@ -402,6 +423,21 @@ public class DDMFormTemplateContextFactoryTest {
 			ddmFormContextProviderServlet);
 	}
 
+	protected void setUpDDMFormEvaluator() throws Exception {
+		DDMFormEvaluator ddmFormEvaluator = mock(DDMFormEvaluator.class);
+
+		when(
+			ddmFormEvaluator.evaluate(
+				Matchers.any(DDMFormEvaluatorContext.class))
+		).thenReturn(
+			new DDMFormEvaluationResult()
+		);
+
+		setDeclaredField(
+			_ddmFormTemplateContextFactory, "_ddmFormEvaluator",
+			ddmFormEvaluator);
+	}
+
 	protected void setUpDDMFormFieldTypeServicesTracker() throws Exception {
 		DDMFormFieldTypeServicesTracker ddmFormFieldTypeServicesTracker = mock(
 			DDMFormFieldTypeServicesTracker.class);
@@ -428,8 +464,14 @@ public class DDMFormTemplateContextFactoryTest {
 			_ddmFormTemplateContextFactory, "_ddmFormJSONSerializer",
 			ddmFormJSONSerializer);
 
+		DDMFormFieldTypeServicesTracker ddmFormFieldTypeServicesTracker = mock(
+			DDMFormFieldTypeServicesTracker.class);
+
 		setDeclaredField(
-			ddmFormJSONSerializer, "_jsonFactory", new JSONFactoryImpl());
+			ddmFormJSONSerializer, "_ddmFormFieldTypeServicesTracker",
+			ddmFormFieldTypeServicesTracker);
+
+		setDeclaredField(ddmFormJSONSerializer, "_jsonFactory", _jsonFactory);
 	}
 
 	protected void setUpDDMFormLayoutJSONSerializer() throws Exception {
@@ -441,7 +483,29 @@ public class DDMFormTemplateContextFactoryTest {
 			ddmFormLayoutJSONSerializer);
 
 		setDeclaredField(
-			ddmFormLayoutJSONSerializer, "_jsonFactory", new JSONFactoryImpl());
+			ddmFormLayoutJSONSerializer, "_jsonFactory", _jsonFactory);
+	}
+
+	protected void setUpDDMFormTemplateContextFactory() throws Exception {
+		_ddmFormTemplateContextFactory =
+			new DDMFormTemplateContextFactoryImpl();
+
+		DDMDataProviderInstanceService ddmDataProviderInstanceService = mock(
+			DDMDataProviderInstanceService.class);
+
+		field(
+			DDMFormTemplateContextFactoryImpl.class,
+			"_ddmFormTemplateContextFactoryHelper"
+		).set(
+			_ddmFormTemplateContextFactory,
+			new DDMFormTemplateContextFactoryHelper(
+				ddmDataProviderInstanceService)
+		);
+	}
+
+	protected void setUpJSONFactory() throws Exception {
+		setDeclaredField(
+			_ddmFormTemplateContextFactory, "_jsonFactory", _jsonFactory);
 	}
 
 	protected void setUpLanguageUtil() {
@@ -463,6 +527,7 @@ public class DDMFormTemplateContextFactoryTest {
 	}
 
 	private DDMFormTemplateContextFactoryImpl _ddmFormTemplateContextFactory;
+	private final JSONFactory _jsonFactory = new JSONFactoryImpl();
 	private Language _language;
 	private Locale _originalSiteDefaultLocale;
 
