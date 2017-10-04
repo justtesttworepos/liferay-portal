@@ -37,6 +37,7 @@ import com.liferay.portal.kernel.service.persistence.CompanyProvider;
 import com.liferay.portal.kernel.service.persistence.CompanyProviderWrapper;
 import com.liferay.portal.kernel.service.persistence.impl.BasePersistenceImpl;
 import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.ReflectionUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringBundler;
 import com.liferay.portal.kernel.util.StringPool;
@@ -44,6 +45,8 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.spring.extender.service.ServiceReference;
 
 import java.io.Serializable;
+
+import java.lang.reflect.Field;
 
 import java.util.Collections;
 import java.util.Date;
@@ -722,11 +725,15 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 						list);
 				}
 				else {
-					if ((list.size() > 1) && _log.isWarnEnabled()) {
-						_log.warn(
-							"AccountPersistenceImpl.fetchByU_A(long, String, boolean) with parameters (" +
-							StringUtil.merge(finderArgs) +
-							") yields a result set with more than 1 result. This violates the logical unique restriction. There is no order guarantee on which result is returned by this finder.");
+					if (list.size() > 1) {
+						Collections.sort(list, Collections.reverseOrder());
+
+						if (_log.isWarnEnabled()) {
+							_log.warn(
+								"AccountPersistenceImpl.fetchByU_A(long, String, boolean) with parameters (" +
+								StringUtil.merge(finderArgs) +
+								") yields a result set with more than 1 result. This violates the logical unique restriction. There is no order guarantee on which result is returned by this finder.");
+						}
 					}
 
 					Account account = list.get(0);
@@ -853,6 +860,22 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 
 	public AccountPersistenceImpl() {
 		setModelClass(Account.class);
+
+		try {
+			Field field = ReflectionUtil.getDeclaredField(BasePersistenceImpl.class,
+					"_dbColumnNames");
+
+			Map<String, String> dbColumnNames = new HashMap<String, String>();
+
+			dbColumnNames.put("password", "password_");
+
+			field.set(this, dbColumnNames);
+		}
+		catch (Exception e) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(e, e);
+			}
+		}
 	}
 
 	/**
@@ -920,7 +943,7 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
 		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
 
-		clearUniqueFindersCache((AccountModelImpl)account);
+		clearUniqueFindersCache((AccountModelImpl)account, true);
 	}
 
 	@Override
@@ -932,49 +955,35 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 			entityCache.removeResult(AccountModelImpl.ENTITY_CACHE_ENABLED,
 				AccountImpl.class, account.getPrimaryKey());
 
-			clearUniqueFindersCache((AccountModelImpl)account);
+			clearUniqueFindersCache((AccountModelImpl)account, true);
 		}
 	}
 
-	protected void cacheUniqueFindersCache(AccountModelImpl accountModelImpl,
-		boolean isNew) {
-		if (isNew) {
-			Object[] args = new Object[] {
-					accountModelImpl.getUserId(), accountModelImpl.getAddress()
-				};
-
-			finderCache.putResult(FINDER_PATH_COUNT_BY_U_A, args,
-				Long.valueOf(1));
-			finderCache.putResult(FINDER_PATH_FETCH_BY_U_A, args,
-				accountModelImpl);
-		}
-		else {
-			if ((accountModelImpl.getColumnBitmask() &
-					FINDER_PATH_FETCH_BY_U_A.getColumnBitmask()) != 0) {
-				Object[] args = new Object[] {
-						accountModelImpl.getUserId(),
-						accountModelImpl.getAddress()
-					};
-
-				finderCache.putResult(FINDER_PATH_COUNT_BY_U_A, args,
-					Long.valueOf(1));
-				finderCache.putResult(FINDER_PATH_FETCH_BY_U_A, args,
-					accountModelImpl);
-			}
-		}
-	}
-
-	protected void clearUniqueFindersCache(AccountModelImpl accountModelImpl) {
+	protected void cacheUniqueFindersCache(AccountModelImpl accountModelImpl) {
 		Object[] args = new Object[] {
 				accountModelImpl.getUserId(), accountModelImpl.getAddress()
 			};
 
-		finderCache.removeResult(FINDER_PATH_COUNT_BY_U_A, args);
-		finderCache.removeResult(FINDER_PATH_FETCH_BY_U_A, args);
+		finderCache.putResult(FINDER_PATH_COUNT_BY_U_A, args, Long.valueOf(1),
+			false);
+		finderCache.putResult(FINDER_PATH_FETCH_BY_U_A, args, accountModelImpl,
+			false);
+	}
+
+	protected void clearUniqueFindersCache(AccountModelImpl accountModelImpl,
+		boolean clearCurrent) {
+		if (clearCurrent) {
+			Object[] args = new Object[] {
+					accountModelImpl.getUserId(), accountModelImpl.getAddress()
+				};
+
+			finderCache.removeResult(FINDER_PATH_COUNT_BY_U_A, args);
+			finderCache.removeResult(FINDER_PATH_FETCH_BY_U_A, args);
+		}
 
 		if ((accountModelImpl.getColumnBitmask() &
 				FINDER_PATH_FETCH_BY_U_A.getColumnBitmask()) != 0) {
-			args = new Object[] {
+			Object[] args = new Object[] {
 					accountModelImpl.getOriginalUserId(),
 					accountModelImpl.getOriginalAddress()
 				};
@@ -1138,8 +1147,20 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 
 		finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITH_PAGINATION);
 
-		if (isNew || !AccountModelImpl.COLUMN_BITMASK_ENABLED) {
+		if (!AccountModelImpl.COLUMN_BITMASK_ENABLED) {
 			finderCache.clearCache(FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION);
+		}
+		else
+		 if (isNew) {
+			Object[] args = new Object[] { accountModelImpl.getUserId() };
+
+			finderCache.removeResult(FINDER_PATH_COUNT_BY_USERID, args);
+			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_BY_USERID,
+				args);
+
+			finderCache.removeResult(FINDER_PATH_COUNT_ALL, FINDER_ARGS_EMPTY);
+			finderCache.removeResult(FINDER_PATH_WITHOUT_PAGINATION_FIND_ALL,
+				FINDER_ARGS_EMPTY);
 		}
 
 		else {
@@ -1164,8 +1185,8 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 		entityCache.putResult(AccountModelImpl.ENTITY_CACHE_ENABLED,
 			AccountImpl.class, account.getPrimaryKey(), account, false);
 
-		clearUniqueFindersCache(accountModelImpl);
-		cacheUniqueFindersCache(accountModelImpl, isNew);
+		clearUniqueFindersCache(accountModelImpl, false);
+		cacheUniqueFindersCache(accountModelImpl);
 
 		account.resetOriginalValues();
 
@@ -1360,7 +1381,7 @@ public class AccountPersistenceImpl extends BasePersistenceImpl<Account>
 		query.append(_SQL_SELECT_ACCOUNT_WHERE_PKS_IN);
 
 		for (Serializable primaryKey : uncachedPrimaryKeys) {
-			query.append(String.valueOf(primaryKey));
+			query.append((long)primaryKey);
 
 			query.append(StringPool.COMMA);
 		}

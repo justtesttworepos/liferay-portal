@@ -115,7 +115,7 @@ public class FileUtil {
 	public static void deleteFile(final Path filePath, boolean retry)
 		throws IOException {
 
-		if ((filePath == null) || Files.notExists(filePath)) {
+		if ((filePath == null) || notExists(filePath)) {
 			return;
 		}
 
@@ -147,20 +147,7 @@ public class FileUtil {
 	}
 
 	public static boolean exists(Path filePath) {
-		try {
-			Path realFilePath = filePath.toRealPath();
-
-			String realFilePathString = realFilePath.toString();
-
-			if (!realFilePathString.equals(filePath.toString())) {
-				return false;
-			}
-
-			return Files.exists(filePath);
-		}
-		catch (Exception e) {
-			return false;
-		}
+		return Files.exists(filePath, LinkOption.NOFOLLOW_LINKS);
 	}
 
 	public static void fireDeleteEvents(Path filePath) throws IOException {
@@ -218,9 +205,7 @@ public class FileUtil {
 			filePath.toString(), startTime);
 
 		for (SyncFile deletedSyncFile : deletedSyncFiles) {
-			if (!Files.notExists(
-					Paths.get(deletedSyncFile.getFilePathName()))) {
-
+			if (!notExists(Paths.get(deletedSyncFile.getFilePathName()))) {
 				continue;
 			}
 
@@ -291,7 +276,7 @@ public class FileUtil {
 	}
 
 	public static long getLastModifiedTime(Path filePath) throws IOException {
-		if (!Files.exists(filePath)) {
+		if (!exists(filePath)) {
 			return 0;
 		}
 
@@ -324,13 +309,13 @@ public class FileUtil {
 				sb.append(extension);
 			}
 
-			String tempFilePathName = FileUtil.getFilePathName(
+			String tempFilePathName = getFilePathName(
 				parentFilePath.toString(), sb.toString());
 
 			if (SyncFileService.fetchSyncFile(tempFilePathName) == null) {
 				Path tempFilePath = Paths.get(tempFilePathName);
 
-				if (!Files.exists(tempFilePath)) {
+				if (!exists(tempFilePath)) {
 					return tempFilePathName;
 				}
 			}
@@ -340,17 +325,18 @@ public class FileUtil {
 	public static String getSanitizedFileName(
 		String fileName, String extension) {
 
+		fileName = fileName.trim();
+
 		for (String blacklistChar : PropsValues.SYNC_FILE_BLACKLIST_CHARS) {
+			blacklistChar = unescapeJava(blacklistChar);
+
 			fileName = fileName.replace(blacklistChar, "_");
 		}
 
 		for (String blacklistCharLast :
 				PropsValues.SYNC_FILE_BLACKLIST_CHARS_LAST) {
 
-			if (blacklistCharLast.startsWith("\\u")) {
-				blacklistCharLast = StringEscapeUtils.unescapeJava(
-					blacklistCharLast);
-			}
+			blacklistCharLast = unescapeJava(blacklistCharLast);
 
 			if (fileName.endsWith(blacklistCharLast)) {
 				fileName = fileName.substring(0, fileName.length() - 1);
@@ -358,6 +344,8 @@ public class FileUtil {
 		}
 
 		if (!Validator.isBlank(extension)) {
+			extension = extension.trim();
+
 			int x = fileName.lastIndexOf(".");
 
 			if ((x == -1) ||
@@ -396,7 +384,7 @@ public class FileUtil {
 	}
 
 	public static boolean isHidden(Path filePath) {
-		if (!PropsValues.SYNC_FILE_IGNORE_HIDDEN || !Files.exists(filePath)) {
+		if (!PropsValues.SYNC_FILE_IGNORE_HIDDEN || !exists(filePath)) {
 			return false;
 		}
 
@@ -442,7 +430,7 @@ public class FileUtil {
 	}
 
 	public static boolean isModified(SyncFile syncFile, Path filePath) {
-		if ((filePath == null) || Files.notExists(filePath)) {
+		if ((filePath == null) || notExists(filePath)) {
 			return true;
 		}
 
@@ -498,7 +486,24 @@ public class FileUtil {
 			}
 		}
 
+		if (Validator.isBlank(syncFile.getChecksum())) {
+			return true;
+		}
+
 		return !checksumsEqual(getChecksum(filePath), syncFile.getChecksum());
+	}
+
+	public static boolean isRealFilePath(Path filePath) {
+		try {
+			Path realFilePath = filePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
+
+			String realFilePathString = realFilePath.toString();
+
+			return realFilePathString.equals(filePath.toString());
+		}
+		catch (Exception e) {
+			return false;
+		}
 	}
 
 	public static boolean isShortcut(Path filePath) {
@@ -534,7 +539,7 @@ public class FileUtil {
 	}
 
 	public static boolean isValidChecksum(Path filePath) throws IOException {
-		if (Files.notExists(filePath) ||
+		if (notExists(filePath) ||
 			(Files.size(filePath) >
 				PropsValues.SYNC_FILE_CHECKSUM_THRESHOLD_SIZE)) {
 
@@ -550,6 +555,8 @@ public class FileUtil {
 		}
 
 		for (String blacklistChar : PropsValues.SYNC_FILE_BLACKLIST_CHARS) {
+			blacklistChar = unescapeJava(blacklistChar);
+
 			if (fileName.contains(blacklistChar)) {
 				return false;
 			}
@@ -558,10 +565,7 @@ public class FileUtil {
 		for (String blacklistLastChar :
 				PropsValues.SYNC_FILE_BLACKLIST_CHARS_LAST) {
 
-			if (blacklistLastChar.startsWith("\\u")) {
-				blacklistLastChar = StringEscapeUtils.unescapeJava(
-					blacklistLastChar);
-			}
+			blacklistLastChar = unescapeJava(blacklistLastChar);
 
 			if (fileName.endsWith(blacklistLastChar)) {
 				return false;
@@ -700,6 +704,10 @@ public class FileUtil {
 		}
 	}
 
+	public static boolean notExists(Path filePath) {
+		return Files.notExists(filePath, LinkOption.NOFOLLOW_LINKS);
+	}
+
 	public static void releaseFileLock(FileLock fileLock) {
 		try {
 			if (fileLock != null) {
@@ -716,13 +724,21 @@ public class FileUtil {
 	public static void setModifiedTime(Path filePath, long modifiedTime)
 		throws IOException {
 
-		if (!Files.exists(filePath)) {
+		if (!exists(filePath)) {
 			return;
 		}
 
 		FileTime fileTime = FileTime.fromMillis(modifiedTime);
 
 		Files.setLastModifiedTime(filePath, fileTime);
+	}
+
+	public static String unescapeJava(String value) {
+		if (value.startsWith("\\u")) {
+			return StringEscapeUtils.unescapeJava(value);
+		}
+
+		return value;
 	}
 
 	private static final Logger _logger = LoggerFactory.getLogger(

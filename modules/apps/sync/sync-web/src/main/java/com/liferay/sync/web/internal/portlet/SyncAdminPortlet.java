@@ -29,6 +29,7 @@ import com.liferay.sync.constants.SyncPortletKeys;
 import com.liferay.sync.exception.OAuthPortletUndeployedException;
 import com.liferay.sync.oauth.helper.SyncOAuthHelperUtil;
 import com.liferay.sync.service.configuration.SyncServiceConfigurationKeys;
+import com.liferay.sync.util.SyncUtil;
 
 import java.io.IOException;
 
@@ -137,6 +138,16 @@ public class SyncAdminPortlet extends BaseSyncPortlet {
 			SyncServiceConfigurationKeys.SYNC_CLIENT_FORCE_SECURITY_MODE,
 			String.valueOf(forceSecurityMode));
 
+		boolean lanEnabled = ParamUtil.getBoolean(actionRequest, "lanEnabled");
+
+		if (lanEnabled) {
+			_syncUtil.enableLanSync(CompanyThreadLocal.getCompanyId());
+		}
+
+		portletPreferences.setValue(
+			SyncServiceConfigurationKeys.SYNC_LAN_ENABLED,
+			String.valueOf(lanEnabled));
+
 		int maxConnections = ParamUtil.getInteger(
 			actionRequest, "maxConnections");
 
@@ -206,5 +217,8 @@ public class SyncAdminPortlet extends BaseSyncPortlet {
 
 	private GroupLocalService _groupLocalService;
 	private SyncOAuthHelperUtil _syncOAuthHelperUtil;
+
+	@Reference
+	private SyncUtil _syncUtil;
 
 }

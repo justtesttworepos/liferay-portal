@@ -21,21 +21,27 @@ import com.liferay.project.templates.internal.Archetyper;
 import com.liferay.project.templates.internal.util.FileUtil;
 import com.liferay.project.templates.internal.util.StringUtil;
 import com.liferay.project.templates.internal.util.Validator;
+import com.liferay.project.templates.internal.util.WorkspaceUtil;
 
 import java.io.File;
+import java.io.InputStream;
 
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.JarInputStream;
+import java.util.jar.Manifest;
 
 import org.apache.maven.archetype.ArchetypeGenerationResult;
 
@@ -47,8 +53,8 @@ public class ProjectTemplates {
 	public static final String TEMPLATE_BUNDLE_PREFIX =
 		"com.liferay.project.templates.";
 
-	public static String[] getTemplates() throws Exception {
-		List<String> templates = new ArrayList<>();
+	public static Map<String, String> getTemplates() throws Exception {
+		Map<String, String> templates = new TreeMap<>();
 
 		File file = FileUtil.getJarFile();
 
@@ -60,12 +66,9 @@ public class ProjectTemplates {
 				Iterator<Path> iterator = directoryStream.iterator();
 
 				while (iterator.hasNext()) {
-					Path templateBundleFile = iterator.next();
+					Path path = iterator.next();
 
-					Path templateBundleFileNamePath =
-						templateBundleFile.getFileName();
-
-					String template = templateBundleFileNamePath.toString();
+					String template = String.valueOf(path.getFileName());
 
 					template = template.substring(
 						TEMPLATE_BUNDLE_PREFIX.length(),
@@ -73,7 +76,19 @@ public class ProjectTemplates {
 
 					template = template.replace('.', '-');
 
-					templates.add(template);
+					if (!template.startsWith(WorkspaceUtil.WORKSPACE)) {
+						try (JarFile jarFile = new JarFile(path.toFile())) {
+							Manifest manifest = jarFile.getManifest();
+
+							Attributes attributes =
+								manifest.getMainAttributes();
+
+							String bundleDescription = attributes.getValue(
+								"Bundle-Description");
+
+							templates.put(template, bundleDescription);
+						}
+					}
 				}
 			}
 		}
@@ -84,28 +99,43 @@ public class ProjectTemplates {
 				while (enumeration.hasMoreElements()) {
 					JarEntry jarEntry = enumeration.nextElement();
 
-					if (!jarEntry.isDirectory()) {
+					if (jarEntry.isDirectory()) {
 						continue;
 					}
 
 					String template = jarEntry.getName();
 
-					if (template.startsWith(TEMPLATE_BUNDLE_PREFIX)) {
-						template = template.substring(
-							TEMPLATE_BUNDLE_PREFIX.length(),
-							template.indexOf("-"));
+					if (!template.startsWith(TEMPLATE_BUNDLE_PREFIX)) {
+						continue;
+					}
 
-						template = template.replace('.', '-');
+					template = template.substring(
+						TEMPLATE_BUNDLE_PREFIX.length(), template.indexOf("-"));
 
-						templates.add(template);
+					template = template.replace('.', '-');
+
+					if (!template.startsWith(WorkspaceUtil.WORKSPACE)) {
+						try (InputStream inputStream = jarFile.getInputStream(
+								jarEntry);
+							JarInputStream jarInputStream = new JarInputStream(
+								inputStream)) {
+
+							Manifest manifest = jarInputStream.getManifest();
+
+							Attributes attributes =
+								manifest.getMainAttributes();
+
+							String bundleDescription = attributes.getValue(
+								"Bundle-Description");
+
+							templates.put(template, bundleDescription);
+						}
 					}
 				}
 			}
 		}
 
-		Collections.sort(templates);
-
-		return templates.toArray(new String[templates.size()]);
+		return templates;
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -167,21 +197,35 @@ public class ProjectTemplates {
 		templateDirPath = templateDirPath.resolve(
 			projectTemplatesArgs.getName());
 
-		FileUtil.extractDirectory("gradle-wrapper", templateDirPath);
-
-		try {
-			Files.setPosixFilePermissions(
-				templateDirPath.resolve("gradlew"),
-				PosixFilePermissions.fromString("rwxrwxr--"));
-		}
-		catch (UnsupportedOperationException uoe) {
-		}
-
-		if (projectTemplatesArgs.getWorkspaceDir() != null) {
+		if (WorkspaceUtil.isWorkspace(destinationDir)) {
 			Files.deleteIfExists(templateDirPath.resolve("settings.gradle"));
 		}
+		else {
+			if (projectTemplatesArgs.isGradle()) {
+				FileUtil.extractDirectory("gradle-wrapper", templateDirPath);
 
-		Files.delete(templateDirPath.resolve("pom.xml"));
+				FileUtil.setPosixFilePermissions(
+					templateDirPath.resolve("gradlew"),
+					_wrapperPosixFilePermissions);
+			}
+
+			if (projectTemplatesArgs.isMaven()) {
+				FileUtil.extractDirectory("maven-wrapper", templateDirPath);
+
+				FileUtil.setPosixFilePermissions(
+					templateDirPath.resolve("mvnw"),
+					_wrapperPosixFilePermissions);
+			}
+		}
+
+		if (!projectTemplatesArgs.isGradle()) {
+			FileUtil.deleteFiles(
+				templateDirPath, "build.gradle", "settings.gradle");
+		}
+
+		if (!projectTemplatesArgs.isMaven()) {
+			FileUtil.deleteFiles(templateDirPath, "pom.xml");
+		}
 	}
 
 	private static void _printHelp(JCommander jCommander) throws Exception {
@@ -191,12 +235,16 @@ public class ProjectTemplates {
 			"Create a new Liferay module project from several available " +
 				"templates:");
 
-		String[] templates = getTemplates();
+		Map<String, String> templates = getTemplates();
 
 		int lineLength = 0;
 
-		for (int i = 0; i < templates.length; i++) {
-			String template = templates[i];
+		Set<String> templateNames = templates.keySet();
+
+		Iterator<String> iterator = templateNames.iterator();
+
+		while (iterator.hasNext()) {
+			String template = iterator.next();
 
 			if ((lineLength + template.length() + 1) >
 					jCommander.getColumnSize()) {
@@ -210,7 +258,7 @@ public class ProjectTemplates {
 
 			lineLength += template.length();
 
-			if (i < (templates.length - 1)) {
+			if (iterator.hasNext()) {
 				System.out.print(", ");
 
 				lineLength += 2;
@@ -224,15 +272,29 @@ public class ProjectTemplates {
 	}
 
 	private static void _printList() throws Exception {
-		for (String template : getTemplates()) {
-			System.out.println(template);
+		Map<String, String> templates = getTemplates();
+
+		for (String template : templates.keySet()) {
+			System.out.println(template + " - " + templates.get(template));
 		}
 	}
 
 	private void _checkArgs(ProjectTemplatesArgs projectTemplatesArgs) {
+		if (Validator.isNull(projectTemplatesArgs.getAuthor())) {
+			throw new IllegalArgumentException("Author is required");
+		}
+
+		String template = projectTemplatesArgs.getTemplate();
+
+		if (Validator.isNull(projectTemplatesArgs.getTemplate())) {
+			throw new IllegalArgumentException("Template is required");
+		}
+
 		String name = projectTemplatesArgs.getName();
 
-		if (Validator.isNull(name)) {
+		if (Validator.isNull(name) &&
+			!template.equals(WorkspaceUtil.WORKSPACE)) {
+
 			throw new IllegalArgumentException("Name is required");
 		}
 
@@ -242,9 +304,13 @@ public class ProjectTemplates {
 			throw new IllegalArgumentException("Destination dir is required");
 		}
 
-		File dir = new File(destinationDir, name);
+		File dir = destinationDir;
 
-		if (dir.exists()) {
+		if (Validator.isNotNull(name)) {
+			dir = new File(dir, name);
+		}
+
+		if (!projectTemplatesArgs.isForce() && dir.exists()) {
 			String[] fileNames = dir.list();
 
 			if ((fileNames == null) || (fileNames.length > 0)) {
@@ -253,32 +319,44 @@ public class ProjectTemplates {
 			}
 		}
 
-		String template = projectTemplatesArgs.getTemplate();
-
-		if (Validator.isNull(projectTemplatesArgs.getTemplate())) {
-			throw new IllegalArgumentException("Template is required");
-		}
-
 		String className = projectTemplatesArgs.getClassName();
 
-		if (Validator.isNull(className)) {
+		if (Validator.isNull(className) && Validator.isNotNull(name)) {
 			className = _getClassName(name);
 		}
 
 		if (template.equals("activator") && !className.endsWith("Activator")) {
 			className += "Activator";
 		}
-		else if ((template.equals("mvc-portlet") ||
+		else if ((template.equals("freemarker-portlet") ||
+				  template.equals("mvc-portlet") ||
+				  template.equals("npm-angular-portlet") ||
+				  template.equals("npm-billboardjs-portlet") ||
+				  template.equals("npm-isomorphic-portlet") ||
+				  template.equals("npm-jquery-portlet") ||
+				  template.equals("npm-metaljs-portlet") ||
+				  template.equals("npm-portlet") ||
+				  template.equals("npm-react-portlet") ||
+				  template.equals("npm-vuejs-portlet") ||
+				  template.equals("spring-mvc-portlet") ||
 				  template.equals("portlet")) &&
-				 className.endsWith("Portlet")) {
+				 (className.length() > 7) && className.endsWith("Portlet")) {
 
 			className = className.substring(0, className.length() - 7);
 		}
 
 		projectTemplatesArgs.setClassName(className);
 
-		if (Validator.isNull(projectTemplatesArgs.getPackageName())) {
+		if (Validator.isNull(projectTemplatesArgs.getPackageName()) &&
+			Validator.isNotNull(name)) {
+
 			projectTemplatesArgs.setPackageName(_getPackageName(name));
+		}
+
+		String contributorType = projectTemplatesArgs.getContributorType();
+
+		if (Validator.isNull(contributorType)) {
+			projectTemplatesArgs.setContributorType(name);
 		}
 	}
 
@@ -301,5 +379,8 @@ public class ProjectTemplates {
 
 		return name.toLowerCase();
 	}
+
+	private static final Set<PosixFilePermission> _wrapperPosixFilePermissions =
+		PosixFilePermissions.fromString("rwxrwxr--");
 
 }

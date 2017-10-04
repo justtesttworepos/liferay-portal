@@ -14,8 +14,6 @@
 
 package com.liferay.portal.workflow.kaleo.service.impl;
 
-import aQute.bnd.annotation.ProviderType;
-
 import com.liferay.osgi.util.ServiceTrackerFactory;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
@@ -37,7 +35,6 @@ import org.osgi.util.tracker.ServiceTracker;
 /**
  * @author Michael C. Han
  */
-@ProviderType
 public class KaleoTaskFormInstanceLocalServiceImpl
 	extends KaleoTaskFormInstanceLocalServiceBaseImpl {
 
@@ -48,8 +45,7 @@ public class KaleoTaskFormInstanceLocalServiceImpl
 			ServiceContext serviceContext)
 		throws PortalException {
 
-		User user = userPersistence.findByPrimaryKey(
-			serviceContext.getGuestOrUserId());
+		User user = userLocalService.getUser(serviceContext.getGuestOrUserId());
 		Date now = new Date();
 
 		long kaleoTaskFormInstanceId = counterLocalService.increment();

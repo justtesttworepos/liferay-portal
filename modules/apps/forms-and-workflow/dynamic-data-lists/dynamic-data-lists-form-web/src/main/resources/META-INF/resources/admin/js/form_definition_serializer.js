@@ -25,6 +25,10 @@ AUI.add(
 
 					fieldTypesDefinitions: {
 						value: {}
+					},
+
+					successPage: {
+						value: {}
 					}
 				},
 
@@ -42,7 +46,8 @@ AUI.add(
 							{
 								availableLanguageIds: instance.get('availableLanguageIds'),
 								defaultLanguageId: instance.get('defaultLanguageId'),
-								fields: instance.get('fields')
+								fields: instance.get('fields'),
+								successPage: instance.get('successPage')
 							}
 						);
 
@@ -60,18 +65,19 @@ AUI.add(
 
 						var definitionFields = fieldTypesDefinitions[field.get('type')];
 
-						var languageId = themeDisplay.getDefaultLanguageId();
+						var languageId = instance.get('defaultLanguageId');
 
 						definitionFields.forEach(
 							function(fieldSetting) {
 								var name = fieldSetting.name;
+								var type = fieldSetting.type;
 
 								var value = field.get(name);
 
 								if (name === 'name') {
 									config[name] = field.get('fieldName');
 								}
-								else if (name === 'options' && value) {
+								else if (type === 'options' && value) {
 									config[name] = value.slice().map(
 										function(option) {
 											var label = {};

@@ -30,7 +30,6 @@ import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.dao.orm.RestrictionsFactoryUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.rule.TransactionalTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.util.IntegerWrapper;
@@ -40,6 +39,7 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
+import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -69,7 +69,8 @@ public class CalendarPersistenceTest {
 	@Rule
 	public static final AggregateTestRule aggregateTestRule = new AggregateTestRule(new LiferayIntegrationTestRule(),
 			PersistenceTestRule.INSTANCE,
-			new TransactionalTestRule(Propagation.REQUIRED));
+			new TransactionalTestRule(Propagation.REQUIRED,
+				"com.liferay.calendar.service"));
 
 	@Before
 	public void setUp() {
@@ -138,8 +139,6 @@ public class CalendarPersistenceTest {
 
 		newCalendar.setModifiedDate(RandomTestUtil.nextDate());
 
-		newCalendar.setResourceBlockId(RandomTestUtil.nextLong());
-
 		newCalendar.setCalendarResourceId(RandomTestUtil.nextLong());
 
 		newCalendar.setName(RandomTestUtil.randomString());
@@ -179,8 +178,6 @@ public class CalendarPersistenceTest {
 		Assert.assertEquals(Time.getShortTimestamp(
 				existingCalendar.getModifiedDate()),
 			Time.getShortTimestamp(newCalendar.getModifiedDate()));
-		Assert.assertEquals(existingCalendar.getResourceBlockId(),
-			newCalendar.getResourceBlockId());
 		Assert.assertEquals(existingCalendar.getCalendarResourceId(),
 			newCalendar.getCalendarResourceId());
 		Assert.assertEquals(existingCalendar.getName(), newCalendar.getName());
@@ -198,13 +195,6 @@ public class CalendarPersistenceTest {
 		Assert.assertEquals(Time.getShortTimestamp(
 				existingCalendar.getLastPublishDate()),
 			Time.getShortTimestamp(newCalendar.getLastPublishDate()));
-	}
-
-	@Test
-	public void testCountByResourceBlockId() throws Exception {
-		_persistence.countByResourceBlockId(RandomTestUtil.nextLong());
-
-		_persistence.countByResourceBlockId(0L);
 	}
 
 	@Test
@@ -276,10 +266,10 @@ public class CalendarPersistenceTest {
 		return OrderByComparatorFactoryUtil.create("Calendar", "uuid", true,
 			"calendarId", true, "groupId", true, "companyId", true, "userId",
 			true, "userName", true, "createDate", true, "modifiedDate", true,
-			"resourceBlockId", true, "calendarResourceId", true, "name", true,
-			"description", true, "timeZoneId", true, "color", true,
-			"defaultCalendar", true, "enableComments", true, "enableRatings",
-			true, "lastPublishDate", true);
+			"calendarResourceId", true, "name", true, "description", true,
+			"timeZoneId", true, "color", true, "defaultCalendar", true,
+			"enableComments", true, "enableRatings", true, "lastPublishDate",
+			true);
 	}
 
 	@Test
@@ -508,8 +498,6 @@ public class CalendarPersistenceTest {
 		calendar.setCreateDate(RandomTestUtil.nextDate());
 
 		calendar.setModifiedDate(RandomTestUtil.nextDate());
-
-		calendar.setResourceBlockId(RandomTestUtil.nextLong());
 
 		calendar.setCalendarResourceId(RandomTestUtil.nextLong());
 

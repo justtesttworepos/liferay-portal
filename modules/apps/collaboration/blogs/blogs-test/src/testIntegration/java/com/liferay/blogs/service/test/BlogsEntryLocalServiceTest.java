@@ -17,11 +17,14 @@ package com.liferay.blogs.service.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.service.AssetEntryLocalServiceUtil;
-import com.liferay.blogs.kernel.exception.EntryContentException;
-import com.liferay.blogs.kernel.exception.EntryTitleException;
-import com.liferay.blogs.kernel.exception.NoSuchEntryException;
-import com.liferay.blogs.kernel.model.BlogsEntry;
+import com.liferay.blogs.constants.BlogsConstants;
+import com.liferay.blogs.exception.EntryContentException;
+import com.liferay.blogs.exception.EntryTitleException;
+import com.liferay.blogs.exception.NoSuchEntryException;
+import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.service.BlogsEntryLocalServiceUtil;
+import com.liferay.blogs.test.util.BlogsTestUtil;
+import com.liferay.blogs.util.BlogsUtil;
 import com.liferay.message.boards.kernel.service.MBMessageLocalServiceUtil;
 import com.liferay.portal.kernel.dao.orm.QueryDefinition;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -35,7 +38,6 @@ import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.service.ServiceContext;
-import com.liferay.portal.kernel.service.SubscriptionLocalServiceUtil;
 import com.liferay.portal.kernel.servlet.taglib.ui.ImageSelector;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
@@ -57,9 +59,7 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.service.test.ServiceTestUtil;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
-import com.liferay.portlet.blogs.constants.BlogsConstants;
-import com.liferay.portlet.blogs.util.BlogsUtil;
-import com.liferay.portlet.blogs.util.test.BlogsTestUtil;
+import com.liferay.subscription.service.SubscriptionLocalServiceUtil;
 
 import java.io.InputStream;
 
@@ -401,6 +401,36 @@ public class BlogsEntryLocalServiceTest {
 	}
 
 	@Test
+	public void testGetEntryByGroupAndOldUrlTitle() throws Exception {
+		BlogsEntry expectedEntry = addEntry(false);
+
+		String oldUrlTitle = expectedEntry.getUrlTitle();
+
+		String urlTitle = "new-friendly-url";
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(_group, _user.getUserId());
+
+		BlogsEntryLocalServiceUtil.updateEntry(
+			expectedEntry.getUserId(), expectedEntry.getEntryId(),
+			expectedEntry.getTitle(), expectedEntry.getSubtitle(), urlTitle,
+			expectedEntry.getDescription(), expectedEntry.getContent(),
+			expectedEntry.getDisplayDate(), expectedEntry.isAllowPingbacks(),
+			expectedEntry.isAllowTrackbacks(), new String[0],
+			expectedEntry.getCoverImageCaption(), null, null, serviceContext);
+
+		BlogsEntry actualEntry = BlogsEntryLocalServiceUtil.getEntry(
+			expectedEntry.getGroupId(), oldUrlTitle);
+
+		BlogsTestUtil.assertEquals(expectedEntry, actualEntry);
+
+		actualEntry = BlogsEntryLocalServiceUtil.getEntry(
+			expectedEntry.getGroupId(), urlTitle);
+
+		BlogsTestUtil.assertEquals(expectedEntry, actualEntry);
+	}
+
+	@Test
 	public void testGetEntryByGroupAndUrlTitle() throws Exception {
 		BlogsEntry expectedEntry = addEntry(false);
 
@@ -481,7 +511,9 @@ public class BlogsEntryLocalServiceTest {
 				_user.getCompanyId(), _group.getGroupId(), new Date(),
 				_statusInTrashQueryDefinition);
 
-		Assert.assertEquals(initialCount + 1, groupsEntriesInTrash.size());
+		Assert.assertEquals(
+			groupsEntriesInTrash.toString(), initialCount + 1,
+			groupsEntriesInTrash.size());
 
 		for (BlogsEntry groupsEntry : groupsEntriesInTrash) {
 			Assert.assertEquals(
@@ -528,7 +560,7 @@ public class BlogsEntryLocalServiceTest {
 		List<BlogsEntry> entries =
 			BlogsEntryLocalServiceUtil.getNoAssetEntries();
 
-		Assert.assertEquals(1, entries.size());
+		Assert.assertEquals(entries.toString(), 1, entries.size());
 		Assert.assertEquals(entry, entries.get(0));
 	}
 
@@ -626,34 +658,6 @@ public class BlogsEntryLocalServiceTest {
 	}
 
 	@Test
-	public void testURLTitleIsNotSavedWhenAddingDraftEntry() throws Exception {
-		ServiceContext serviceContext =
-			ServiceContextTestUtil.getServiceContext(_group, _user.getUserId());
-
-		serviceContext.setWorkflowAction(WorkflowConstants.STATUS_DRAFT);
-
-		BlogsEntry entry = BlogsEntryLocalServiceUtil.addEntry(
-			_user.getUserId(), RandomTestUtil.randomString(),
-			RandomTestUtil.randomString(), serviceContext);
-
-		Assert.assertTrue(Validator.isNull(entry.getUrlTitle()));
-	}
-
-	@Test
-	public void testURLTitleIsNotSavedWhenAddingDraftEntryWithWorkflow()
-		throws Exception {
-
-		ServiceContext serviceContext =
-			ServiceContextTestUtil.getServiceContext(_group, _user.getUserId());
-
-		BlogsEntry entry = BlogsTestUtil.addEntryWithWorkflow(
-			_user.getUserId(), RandomTestUtil.randomString(), false,
-			serviceContext);
-
-		Assert.assertTrue(Validator.isNull(entry.getUrlTitle()));
-	}
-
-	@Test
 	public void testURLTitleIsNotUpdatedWhenUpdatingEntryTitle()
 		throws Exception {
 
@@ -728,6 +732,34 @@ public class BlogsEntryLocalServiceTest {
 		Assert.assertEquals(
 			BlogsUtil.getUrlTitle(entry.getEntryId(), title),
 			entry.getUrlTitle());
+	}
+
+	@Test
+	public void testURLTitleIsSavedWhenAddingDraftEntry() throws Exception {
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(_group, _user.getUserId());
+
+		serviceContext.setWorkflowAction(WorkflowConstants.STATUS_DRAFT);
+
+		BlogsEntry entry = BlogsEntryLocalServiceUtil.addEntry(
+			_user.getUserId(), RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), serviceContext);
+
+		Assert.assertTrue(Validator.isNotNull(entry.getUrlTitle()));
+	}
+
+	@Test
+	public void testURLTitleIsSavedWhenAddingDraftEntryWithWorkflow()
+		throws Exception {
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(_group, _user.getUserId());
+
+		BlogsEntry entry = BlogsTestUtil.addEntryWithWorkflow(
+			_user.getUserId(), RandomTestUtil.randomString(), false,
+			serviceContext);
+
+		Assert.assertTrue(Validator.isNotNull(entry.getUrlTitle()));
 	}
 
 	protected BlogsEntry addEntry(boolean statusInTrash) throws Exception {
@@ -825,7 +857,8 @@ public class BlogsEntryLocalServiceTest {
 			BlogsEntryLocalServiceUtil.getCompanyEntries(
 				_user.getCompanyId(), new Date(), queryDefinition);
 
-		Assert.assertEquals(initialCount + 1, actualEntries.size());
+		Assert.assertEquals(
+			actualEntries.toString(), initialCount + 1, actualEntries.size());
 
 		assertBlogsEntriesStatus(actualEntries, statusInTrash);
 	}
@@ -890,7 +923,8 @@ public class BlogsEntryLocalServiceTest {
 				_group.getGroupId(), queryDefinition);
 		}
 
-		Assert.assertEquals(initialCount + 1, actualEntries.size());
+		Assert.assertEquals(
+			actualEntries.toString(), initialCount + 1, actualEntries.size());
 
 		assertBlogsEntriesStatus(actualEntries, statusInTrash);
 	}
@@ -959,7 +993,8 @@ public class BlogsEntryLocalServiceTest {
 				_group.getGroupId(), _user.getUserId(), new Date(),
 				queryDefinition);
 
-		Assert.assertEquals(initialCount + 1, actualEntries.size());
+		Assert.assertEquals(
+			actualEntries.toString(), initialCount + 1, actualEntries.size());
 
 		assertBlogsEntriesStatus(actualEntries, statusInTrash);
 	}
@@ -998,24 +1033,26 @@ public class BlogsEntryLocalServiceTest {
 			queryDefinition = _statusAnyQueryDefinition;
 		}
 
-		Organization organization = OrganizationTestUtil.addOrganization();
+		_organization = OrganizationTestUtil.addOrganization();
 
-		User user = UserTestUtil.addOrganizationOwnerUser(organization);
+		_organizationUser = UserTestUtil.addOrganizationOwnerUser(
+			_organization);
 
 		List<BlogsEntry> initialEntries =
 			BlogsEntryLocalServiceUtil.getOrganizationEntries(
-				organization.getOrganizationId(), new Date(), queryDefinition);
+				_organization.getOrganizationId(), new Date(), queryDefinition);
 
 		int initialCount = initialEntries.size();
 
-		addEntry(user.getUserId(), false);
-		addEntry(user.getUserId(), true);
+		addEntry(_organizationUser.getUserId(), false);
+		addEntry(_organizationUser.getUserId(), true);
 
 		List<BlogsEntry> actualEntries =
 			BlogsEntryLocalServiceUtil.getOrganizationEntries(
-				organization.getOrganizationId(), new Date(), queryDefinition);
+				_organization.getOrganizationId(), new Date(), queryDefinition);
 
-		Assert.assertEquals(initialCount + 1, actualEntries.size());
+		Assert.assertEquals(
+			actualEntries.toString(), initialCount + 1, actualEntries.size());
 
 		assertBlogsEntriesStatus(actualEntries, statusInTrash);
 	}
@@ -1030,20 +1067,21 @@ public class BlogsEntryLocalServiceTest {
 			queryDefinition = _statusAnyQueryDefinition;
 		}
 
-		Organization organization = OrganizationTestUtil.addOrganization();
+		_organization = OrganizationTestUtil.addOrganization();
 
-		User user = UserTestUtil.addOrganizationOwnerUser(organization);
+		_organizationUser = UserTestUtil.addOrganizationOwnerUser(
+			_organization);
 
 		int initialCount =
 			BlogsEntryLocalServiceUtil.getOrganizationEntriesCount(
-				organization.getOrganizationId(), new Date(), queryDefinition);
+				_organization.getOrganizationId(), new Date(), queryDefinition);
 
-		addEntry(user.getUserId(), false);
-		addEntry(user.getUserId(), true);
+		addEntry(_organizationUser.getUserId(), false);
+		addEntry(_organizationUser.getUserId(), true);
 
 		int actualCount =
 			BlogsEntryLocalServiceUtil.getOrganizationEntriesCount(
-				organization.getOrganizationId(), new Date(), queryDefinition);
+				_organization.getOrganizationId(), new Date(), queryDefinition);
 
 		Assert.assertEquals(initialCount + 1, actualCount);
 	}
@@ -1061,16 +1099,22 @@ public class BlogsEntryLocalServiceTest {
 	@DeleteAfterTestRun
 	private Group _group;
 
+	@DeleteAfterTestRun
+	private Organization _organization;
+
+	@DeleteAfterTestRun
+	private User _organizationUser;
+
 	private final QueryDefinition<BlogsEntry> _statusAnyQueryDefinition =
-		new QueryDefinition<BlogsEntry>(
+		new QueryDefinition<>(
 			WorkflowConstants.STATUS_ANY, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
 			null);
 	private final QueryDefinition<BlogsEntry> _statusApprovedQueryDefinition =
-		new QueryDefinition<BlogsEntry>(
+		new QueryDefinition<>(
 			WorkflowConstants.STATUS_APPROVED, QueryUtil.ALL_POS,
 			QueryUtil.ALL_POS, null);
 	private final QueryDefinition<BlogsEntry> _statusInTrashQueryDefinition =
-		new QueryDefinition<BlogsEntry>(
+		new QueryDefinition<>(
 			WorkflowConstants.STATUS_IN_TRASH, QueryUtil.ALL_POS,
 			QueryUtil.ALL_POS, null);
 	private User _user;

@@ -79,7 +79,6 @@ public class UpgradeDynamicDataMapping extends UpgradeProcess {
 			alter(
 				DDMTemplateTable.class,
 				new AlterTableAddColumn("classNameId LONG"),
-				new AlterTableAddColumn("templateKey STRING"),
 				new AlterColumnName("structureId", "classPK LONG"));
 
 			long classNameId = PortalUtil.getClassNameId(
@@ -144,8 +143,8 @@ public class UpgradeDynamicDataMapping extends UpgradeProcess {
 	protected void updateStructuresClassNameId() throws Exception {
 		try (LoggingTimer loggingTimer = new LoggingTimer();
 			PreparedStatement ps = connection.prepareStatement(
-				"update DDMStructure set classNameId = ? where " +
-					"classNameId = ?")) {
+				"update DDMStructure set classNameId = ? where classNameId = " +
+					"?")) {
 
 			ps.setLong(
 				1,

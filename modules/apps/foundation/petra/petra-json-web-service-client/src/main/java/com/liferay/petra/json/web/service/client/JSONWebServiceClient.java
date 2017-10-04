@@ -14,6 +14,8 @@
 
 package com.liferay.petra.json.web.service.client;
 
+import aQute.bnd.annotation.ProviderType;
+
 import java.security.KeyStore;
 
 import java.util.Map;
@@ -22,46 +24,63 @@ import java.util.Map;
  * @author Ivica Cardic
  * @author Igor Beslic
  */
+@ProviderType
 public interface JSONWebServiceClient {
 
+	public void destroy();
+
 	public String doDelete(String url, Map<String, String> parameters)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doDelete(
 			String url, Map<String, String> parameters,
 			Map<String, String> headers)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doGet(String url, Map<String, String> parameters)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doGet(
 			String url, Map<String, String> parameters,
 			Map<String, String> headers)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doPost(String url, Map<String, String> parameters)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doPost(
 			String url, Map<String, String> parameters,
 			Map<String, String> headers)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
+
+	public String doPostAsJSON(String url, Object object)
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doPostAsJSON(String url, String json)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doPostAsJSON(
 			String url, String json, Map<String, String> headers)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doPut(String url, Map<String, String> parameters)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String doPut(
 			String url, Map<String, String> parameters,
 			Map<String, String> headers)
-		throws JSONWebServiceTransportException;
+		throws JSONWebServiceInvocationException,
+			   JSONWebServiceTransportException;
 
 	public String getHostName();
 
@@ -78,6 +97,14 @@ public interface JSONWebServiceClient {
 	public void setKeyStore(KeyStore keyStore);
 
 	public void setLogin(String login);
+
+	public void setOAuthAccessSecret(String oAuthAccessSecret);
+
+	public void setOAuthAccessToken(String oAuthAccessToken);
+
+	public void setOAuthConsumerKey(String oAuthConsumerKey);
+
+	public void setOAuthConsumerSecret(String oAuthConsumerSecret);
 
 	public void setPassword(String password);
 

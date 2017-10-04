@@ -297,6 +297,12 @@ public class MBUtil {
 		return GetterUtil.getLong(parts[0]);
 	}
 
+	/**
+	 * @deprecated As of 7.0.0, replaced by {@link
+	 *             com.liferay.message.boards.web.internal.util.
+	 *             MBSubscriptionUtil#getCategorySubscriptionClassPKs(long)}
+	 */
+	@Deprecated
 	public static Set<Long> getCategorySubscriptionClassPKs(long userId) {
 		List<Subscription> subscriptions =
 			SubscriptionLocalServiceUtil.getUserSubscriptions(
@@ -706,11 +712,12 @@ public class MBUtil {
 
 		String subject = message.getSubject();
 
-		if (subject.startsWith("RE:")) {
+		if (subject.startsWith(MBMessageConstants.MESSAGE_SUBJECT_PREFIX_RE)) {
 			return subject;
 		}
 		else {
-			return "RE: " + message.getSubject();
+			return MBMessageConstants.MESSAGE_SUBJECT_PREFIX_RE +
+				message.getSubject();
 		}
 	}
 
@@ -754,6 +761,12 @@ public class MBUtil {
 		return priorityPair;
 	}
 
+	/**
+	 * @deprecated As of 7.0.0, replaced by {@link
+	 *             com.liferay.message.boards.web.internal.util.
+	 *             MBSubscriptionUtil#getThreadSubscriptionClassPKs(long)}
+	 */
+	@Deprecated
 	public static Set<Long> getThreadSubscriptionClassPKs(long userId) {
 		List<Subscription> subscriptions =
 			SubscriptionLocalServiceUtil.getUserSubscriptions(
@@ -1114,12 +1127,12 @@ public class MBUtil {
 
 		String parentMessageId = null;
 
-		String subject = StringUtil.reverse(message.getSubject());
+		String subject = message.getSubject();
 
-		int pos = subject.indexOf(CharPool.LESS_THAN);
+		int pos = subject.lastIndexOf(CharPool.LESS_THAN);
 
 		if (pos != -1) {
-			parentMessageId = StringUtil.reverse(subject.substring(0, pos + 1));
+			parentMessageId = subject.substring(pos);
 		}
 
 		return parentMessageId;

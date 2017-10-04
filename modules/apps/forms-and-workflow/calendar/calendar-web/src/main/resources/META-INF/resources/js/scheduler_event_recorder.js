@@ -338,9 +338,12 @@ AUI.add(
 									destroyOnHide: true,
 									modal: true
 								},
+								dialogIframe: {
+									bodyCssClass: 'dialog-with-footer'
+								},
 								refreshWindow: window,
 								title: Liferay.Language.get('edit-calendar-booking'),
-								uri: Lang.sub(editCalendarBookingURL, data)
+								uri: CalendarUtil.fillURLParameters(editCalendarBookingURL, data)
 							}
 						);
 
@@ -361,7 +364,23 @@ AUI.add(
 						if (schedulerEvent && linkEnabled) {
 							var remoteServices = instance.get('remoteServices');
 
-							remoteServices.invokeTransition(schedulerEvent, statusData);
+							if (schedulerEvent.isRecurring()) {
+								Liferay.RecurrenceUtil.openConfirmationPanel(
+									'invokeTransition',
+									function() {
+										remoteServices.invokeTransition(schedulerEvent, schedulerEvent.get('instanceIndex'), statusData, true, false);
+									},
+									function() {
+										remoteServices.invokeTransition(schedulerEvent, schedulerEvent.get('instanceIndex'), statusData, true, true);
+									},
+									function() {
+										remoteServices.invokeTransition(schedulerEvent, schedulerEvent.get('instanceIndex'), statusData, false, false);
+									}
+								);
+							}
+							else {
+								remoteServices.invokeTransition(schedulerEvent, 0, statusData, false, false);
+							}
 						}
 					},
 
@@ -389,7 +408,7 @@ AUI.add(
 								},
 								refreshWindow: window,
 								title: Liferay.Language.get('view-calendar-booking-details'),
-								uri: Lang.sub(viewCalendarBookingURL, data)
+								uri: CalendarUtil.fillURLParameters(viewCalendarBookingURL, data)
 							}
 						);
 

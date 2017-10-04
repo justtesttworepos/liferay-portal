@@ -28,7 +28,7 @@ import com.liferay.portal.kernel.model.LayoutRevision;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.ServiceContext;
-import com.liferay.portal.kernel.util.ProxyFactory;
+import com.liferay.portal.kernel.util.ServiceProxyFactory;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.workflow.WorkflowTask;
 import com.liferay.portal.kernel.xml.Element;
@@ -50,6 +50,12 @@ import javax.servlet.http.HttpServletRequest;
  */
 @ProviderType
 public class StagingUtil {
+
+	public static String buildRemoteURL(
+		ExportImportConfiguration exportImportConfiguration) {
+
+		return _staging.buildRemoteURL(exportImportConfiguration);
+	}
 
 	public static String buildRemoteURL(
 		String remoteAddress, int remotePort, String remotePathContext,
@@ -255,6 +261,10 @@ public class StagingUtil {
 		Locale locale, Exception e, Map<String, Serializable> contextMap) {
 
 		return _staging.getExceptionMessagesJSONObject(locale, e, contextMap);
+	}
+
+	public static Group getLiveGroup(Group group) {
+		return _staging.getLiveGroup(group);
 	}
 
 	public static Group getLiveGroup(long groupId) {
@@ -699,6 +709,12 @@ public class StagingUtil {
 			portletId, portletPreferences, lastPublishDate);
 	}
 
+	/**
+	 * @deprecated As of 4.0.0, replaced by {@link
+	 *             com.liferay.staging.configuration.web.internal.portlet.StagingConfigurationPortlet#editStagingConfiguration(
+	 *             javax.portlet.ActionRequest, javax.portlet.ActionResponse)}
+	 */
+	@Deprecated
 	public static void updateStaging(
 			PortletRequest portletRequest, Group liveGroup)
 		throws PortalException {
@@ -733,7 +749,7 @@ public class StagingUtil {
 	}
 
 	private static volatile Staging _staging =
-		ProxyFactory.newServiceTrackedInstance(
-			Staging.class, StagingUtil.class, "_staging");
+		ServiceProxyFactory.newServiceTrackedInstance(
+			Staging.class, StagingUtil.class, "_staging", false);
 
 }
